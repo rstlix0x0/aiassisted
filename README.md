@@ -95,9 +95,9 @@ aiassisted setup-skills --dry-run
 
 This creates:
 - **OpenCode**: Skills (`git-commit`, `review-rust`) + Agents (`ai-knowledge-rust`, `ai-knowledge-architecture`)
-- **Claude Code**: Skills (`git-commit`, `review-rust`, `rust-knowledge`, `architecture-knowledge`)
+- **Claude Code**: Skills (`git-commit`, `review-rust`) + Subagents (`ai-knowledge-rust`, `ai-knowledge-architecture`)
 
-All skills reference `.aiassisted/` files directly, so updates propagate automatically without needing to sync.
+All skills and agents reference `.aiassisted/` files directly, so updates propagate automatically without needing to sync.
 
 ### View Help
 

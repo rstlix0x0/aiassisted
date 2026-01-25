@@ -12,11 +12,12 @@ templates/
 │   │   └── review-rust.SKILL.md.template
 │   └── claude/            # Claude Code skill templates
 │       ├── git-commit.SKILL.md.template
-│       ├── review-rust.SKILL.md.template
-│       ├── rust-knowledge.SKILL.md.template
-│       └── architecture-knowledge.SKILL.md.template
+│       └── review-rust.SKILL.md.template
 └── agents/
-    └── opencode/          # OpenCode agent templates
+    ├── opencode/          # OpenCode agent templates
+    │   ├── ai-knowledge-rust.AGENT.md.template
+    │   └── ai-knowledge-architecture.AGENT.md.template
+    └── claude/            # Claude Code agent templates (subagents)
         ├── ai-knowledge-rust.AGENT.md.template
         └── ai-knowledge-architecture.AGENT.md.template
 ```
@@ -42,13 +43,23 @@ Templates use the following variables that are substituted during generation:
 
 - **git-commit**: Commit changes following conventional commits
 - **review-rust**: Review Rust code against project guidelines
-- **rust-knowledge**: Answer questions about Rust guidelines (runs in subagent)
-- **architecture-knowledge**: Answer questions about architecture patterns (runs in subagent)
 
-## Agents (OpenCode Only)
+### Claude Code Agents (Subagents)
+
+- **ai-knowledge-rust**: Rust guidelines expert subagent
+- **ai-knowledge-architecture**: Architecture patterns expert subagent
+
+## Agents (OpenCode & Claude Code)
+
+### OpenCode Agents
 
 - **ai-knowledge-rust**: Rust guidelines expert agent
 - **ai-knowledge-architecture**: Architecture patterns expert agent
+
+### Claude Code Subagents
+
+- **ai-knowledge-rust**: Rust guidelines expert subagent
+- **ai-knowledge-architecture**: Architecture patterns expert subagent
 
 ## Usage
 

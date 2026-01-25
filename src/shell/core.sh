@@ -935,13 +935,13 @@ setup_opencode_skills() {
     fi
 }
 
-# Setup Claude Code skills
+# Setup Claude Code skills and agents
 setup_claude_skills() {
     _project_root="$1"
     _templates_dir="$2"
     _dry_run="$3"
     
-    log_info "Setting up Claude Code skills..."
+    log_info "Setting up Claude Code skills and agents..."
     
     # Create .claude directory if it doesn't exist
     _claude_dir="$_project_root/.claude"
@@ -949,8 +949,8 @@ setup_claude_skills() {
     if [ "$_dry_run" -eq 0 ]; then
         mkdir -p "$_claude_dir/skills/git-commit"
         mkdir -p "$_claude_dir/skills/review-rust"
-        mkdir -p "$_claude_dir/skills/rust-knowledge"
-        mkdir -p "$_claude_dir/skills/architecture-knowledge"
+        mkdir -p "$_claude_dir/agents/ai-knowledge-rust"
+        mkdir -p "$_claude_dir/agents/ai-knowledge-architecture"
     fi
     
     # Generate guidelines lists
@@ -983,35 +983,36 @@ setup_claude_skills() {
         echo "  Would create: .claude/skills/review-rust/SKILL.md"
     fi
     
-    # Setup rust-knowledge skill
-    log_debug "Creating rust-knowledge skill..."
+    # Setup ai-knowledge-rust agent
+    log_debug "Creating ai-knowledge-rust agent..."
     if [ "$_dry_run" -eq 0 ]; then
         substitute_template_simple \
-            "$_templates_dir/skills/claude/rust-knowledge.SKILL.md.template" \
-            "$_claude_dir/skills/rust-knowledge/SKILL.md" \
+            "$_templates_dir/agents/claude/ai-knowledge-rust.AGENT.md.template" \
+            "$_claude_dir/agents/ai-knowledge-rust/AGENT.md" \
             "$_project_root" \
             "$_rust_list" \
             "$_arch_list"
     else
-        echo "  Would create: .claude/skills/rust-knowledge/SKILL.md"
+        echo "  Would create: .claude/agents/ai-knowledge-rust/AGENT.md"
     fi
     
-    # Setup architecture-knowledge skill
-    log_debug "Creating architecture-knowledge skill..."
+    # Setup ai-knowledge-architecture agent
+    log_debug "Creating ai-knowledge-architecture agent..."
     if [ "$_dry_run" -eq 0 ]; then
         substitute_template_simple \
-            "$_templates_dir/skills/claude/architecture-knowledge.SKILL.md.template" \
-            "$_claude_dir/skills/architecture-knowledge/SKILL.md" \
+            "$_templates_dir/agents/claude/ai-knowledge-architecture.AGENT.md.template" \
+            "$_claude_dir/agents/ai-knowledge-architecture/AGENT.md" \
             "$_project_root" \
             "$_rust_list" \
             "$_arch_list"
     else
-        echo "  Would create: .claude/skills/architecture-knowledge/SKILL.md"
+        echo "  Would create: .claude/agents/ai-knowledge-architecture/AGENT.md"
     fi
     
     if [ "$_dry_run" -eq 0 ]; then
         log_success "Claude Code setup complete!"
-        log_info "Created skills: git-commit, review-rust, rust-knowledge, architecture-knowledge"
+        log_info "Created skills: git-commit, review-rust"
+        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
     fi
 }
 
@@ -1144,8 +1145,8 @@ cmd_setup_skills() {
         fi
         
         if [ $_setup_claude -eq 1 ]; then
-            printf "Claude skills: %s/git-commit%s, %s/review-rust%s, %s/rust-knowledge%s, %s/architecture-knowledge%s\n" \
-                "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+            printf "Claude Code skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+            printf "Claude Code agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
         printf "\n"
