@@ -5,13 +5,12 @@ A simple, safe installer for AI-Assisted Engineering Guidelines. This tool helps
 ## Features
 
 - **One-command installation** via `curl` pipe
-- **Multi-runtime support** - Choose between Shell, Python (UV), or Bun backends
 - **Smart version tracking** using git commit hashes
 - **Automatic update detection** with diff preview
 - **Safe installation** to user directory (no sudo required)
 - **POSIX-compliant** shell scripts for maximum portability
 - **Colored terminal output** with automatic capability detection
-- **Parallel downloads** with Python and Bun runtimes for faster installs
+- **Zero dependencies** (except git)
 
 ## Requirements
 
@@ -21,13 +20,7 @@ A simple, safe installer for AI-Assisted Engineering Guidelines. This tool helps
   - Fedora: `sudo dnf install git`
   - Arch: `sudo pacman -S git`
 
-**Optional runtimes** (one or more recommended):
-- **Python + UV** - For faster parallel downloads
-  - Install UV: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **Bun** - For fastest performance
-  - Install Bun: `curl -fsSL https://bun.sh/install | bash`
-
-The tool will auto-detect which runtime to use. Shell runtime works everywhere with zero dependencies (besides git).
+That's it! Pure POSIX shell - works everywhere.
 
 ## Quick Start
 
@@ -133,7 +126,7 @@ The CLI stores user preferences in `~/.aiassisted/config.toml`:
 aiassisted config show
 
 # Get specific value
-aiassisted config get default_runtime
+aiassisted config get verbosity
 
 # Edit configuration in $EDITOR
 aiassisted config edit
@@ -151,7 +144,6 @@ The config file (`~/.aiassisted/config.toml`) supports these settings:
 
 ```toml
 [general]
-default_runtime = "auto"    # Runtime: shell, python, bun, or auto
 verbosity = 1               # 0=quiet, 1=normal, 2=verbose
 
 [install]
@@ -221,101 +213,21 @@ aiassisted help
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `install` | Install .aiassisted to directory | `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
-| `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
-| `check` | Check if updates available | `--path=DIR`, `--runtime=<shell\|python\|bun>` |
-| `setup-skills` | Setup AI agent skills | `--tool=<opencode\|claude\|auto>`, `--dry-run`, `--runtime=shell` |
+| `install` | Install .aiassisted to directory | `--path=DIR`, `--verbose`, `--quiet` |
+| `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet` |
+| `check` | Check if updates available | `--path=DIR` |
+| `setup-skills` | Setup AI agent skills | `--tool=<opencode\|claude\|auto>`, `--dry-run` |
 | `templates <subcommand>` | Manage templates | `list`, `show <path>`, `init`, `sync`, `diff`, `path` |
 | `config <subcommand>` | Manage configuration | `show`, `get <key>`, `edit`, `reset`, `path` |
-| `version` | Show CLI version | `--runtime=<shell\|python\|bun>` |
+| `version` | Show CLI version | - |
 | `self-update` | Update the CLI tool | - |
-| `runtime list` | Show available runtimes | - |
-| `runtime set <name>` | Set preferred runtime | - |
-| `runtime info` | Show current runtime details | - |
 | `help` | Show help message | - |
-
-## Runtime Selection
-
-`aiassisted` supports three different runtime backends:
-
-### Available Runtimes
-
-1. **Shell (Default)** - Pure POSIX sh, zero dependencies
-   - Always available
-   - Sequential downloads
-   - ~2s install time
-
-2. **Python + UV** - Modern Python with fast dependency management
-   - Requires: [UV](https://docs.astral.sh/uv/getting-started/installation/)
-   - Parallel downloads
-   - Rich terminal output
-   - ~500ms install time
-
-3. **Bun** - Fast JavaScript runtime with native TypeScript
-   - Requires: [Bun](https://bun.sh/docs/installation)
-   - Parallel downloads
-   - Native TypeScript support
-   - ~400ms install time
-
-### Check Available Runtimes
-
-```bash
-aiassisted runtime list
-```
-
-Output:
-```
-Available Runtimes:
-
-  ✓ shell (default)
-  ✓ python (detected: uv 0.9.16, active)
-  ✓ bun (detected: 1.3.0)
-```
-
-### Set Preferred Runtime
-
-Set your preferred runtime (saved to `~/.aiassisted/config`):
-
-```bash
-# Use Python runtime by default
-aiassisted runtime set python
-
-# Use Bun runtime by default
-aiassisted runtime set bun
-
-# Use Shell runtime by default
-aiassisted runtime set shell
-```
-
-### Explicit Runtime Selection
-
-Override the default runtime for a single command:
-
-```bash
-# Use Python runtime for this install
-aiassisted install --runtime=python
-
-# Use Bun runtime for this update
-aiassisted update --runtime=bun
-
-# Use Shell runtime for this check
-aiassisted check --runtime=shell
-```
-
-### Runtime Auto-Detection
-
-If no runtime is configured, `aiassisted` auto-detects in this order:
-
-1. Python (if `uv` is available)
-2. Bun (if `bun` is available)
-3. Shell (always available)
 
 ## Global Options
 
 - `--verbose` - Show detailed debug output
 - `--quiet` - Show only errors
 - `--path=DIR` - Specify target directory (default: current directory)
-- `--runtime=<shell|python|bun>` - Select runtime backend explicitly
 - `--force` - Skip confirmation prompts (update command only)
 
 ## Installation Structure
@@ -327,15 +239,12 @@ The installer creates the following structure:
 ├── config.toml                    # Global configuration
 ├── templates/                     # User-customizable templates
 ├── cache/                        # Temporary cache files
-├── state/                        # Runtime state
+├── state/                        # State files
 └── source/                       # Source code
     └── aiassisted/               # Git clone of the repository
         ├── .git/                 # Git metadata (for updates)
-        ├── bin/aiassisted        # CLI orchestrator
-        ├── src/
-        │   ├── shell/            # Shell runtime backend
-        │   ├── python/           # Python runtime backend
-        │   └── bun/              # Bun runtime backend
+        ├── bin/aiassisted        # CLI script (POSIX shell)
+        ├── src/shell/            # Core implementation
         ├── .aiassisted/          # Guidelines and instructions
         └── README.md
 

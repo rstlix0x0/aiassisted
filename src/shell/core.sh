@@ -126,7 +126,7 @@ is_writable() {
 
 # Get value from TOML configuration file
 # Usage: toml_get <file> <key> [default]
-# Example: toml_get ~/.aiassisted/config.toml "default_runtime" "auto"
+# Example: toml_get ~/.aiassisted/config.toml "verbosity" "1"
 toml_get() {
     _file="$1"
     _key="$2"
@@ -1336,7 +1336,7 @@ cmd_config() {
             _key="$2"
             if [ -z "$_key" ]; then
                 log_error "Usage: aiassisted config get <key>"
-                log_info "Example: aiassisted config get default_runtime"
+                log_info "Example: aiassisted config get verbosity"
                 return 1
             fi
             if _value=$(toml_get "$_config_file" "$_key"); then
@@ -1678,7 +1678,6 @@ Commands:
   setup-skills [--tool=TOOL]        Setup AI agent skills (opencode, claude, or auto)
   templates <subcommand>            Manage templates (list, show, init, sync, path, diff)
   config <subcommand>               Manage configuration (show, get, edit, reset, path)
-  runtime <subcommand>              Manage runtime backends (list, set, info, help)
   version                           Show CLI version
   self-update                       Update the aiassisted CLI itself
   help                              Show this help message
@@ -1687,7 +1686,6 @@ Options:
   --path=DIR                        Target directory (default: current directory)
   --force                           Skip confirmation prompts during update
   --tool=TOOL                       AI tool to setup (opencode, claude, auto)
-  --runtime=RUNTIME                 Runtime backend to use (shell, python, bun)
   --dry-run                         Show what would be created without creating
   --verbose                         Show detailed output
   --quiet                           Show only errors
