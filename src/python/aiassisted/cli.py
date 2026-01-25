@@ -198,6 +198,10 @@ Commands:
   install [--path=DIR]              Install .aiassisted to directory (default: current)
   update [--force] [--path=DIR]     Update existing .aiassisted installation
   check [--path=DIR]                Check if updates are available
+  setup-skills [--tool=TOOL]        Setup AI agent skills (opencode, claude, or auto)
+  templates <subcommand>            Manage templates (list, show, init, sync, path, diff)
+  config <subcommand>               Manage configuration (show, get, edit, reset, path)
+  runtime <subcommand>              Manage runtime backends (list, set, info, help)
   version                           Show CLI version
   self-update                       Update the aiassisted CLI itself
   help                              Show this help message
@@ -205,9 +209,11 @@ Commands:
 Options:
   --path=DIR                        Target directory (default: current directory)
   --force                           Skip confirmation prompts during update
+  --tool=TOOL                       AI tool to setup (opencode, claude, auto)
+  --runtime=RUNTIME                 Runtime backend to use (shell, python, bun)
+  --dry-run                         Show what would be created without creating
   --verbose                         Show detailed output
   --quiet                           Show only errors
-  --runtime=<shell|python|bun>      Select runtime backend
 
 Examples:
   # Install to current directory
@@ -224,6 +230,35 @@ Examples:
 
   # Force update without confirmation
   aiassisted update --force
+
+  # Setup AI agent skills (auto-detect tools)
+  aiassisted setup-skills
+
+  # Setup for specific tool
+  aiassisted setup-skills --tool=opencode
+  aiassisted setup-skills --tool=claude
+
+  # Preview what would be created
+  aiassisted setup-skills --dry-run
+
+  # Manage templates
+  aiassisted templates list          # List all templates
+  aiassisted templates init          # Copy to project for customization
+  aiassisted templates sync          # Update from global
+
+  # Manage configuration
+  aiassisted config show                 # View current config
+  aiassisted config get default_runtime  # Get specific value
+  aiassisted config edit                 # Edit in $EDITOR
+
+  # Manage runtime backends
+  aiassisted runtime list                # List available runtimes
+  aiassisted runtime set python          # Set preferred runtime
+  aiassisted runtime help                # Show runtime help
+
+  # Override runtime for single command
+  aiassisted install --runtime=shell
+  aiassisted update --runtime=python
 
   # Update CLI tool itself
   aiassisted self-update
