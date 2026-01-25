@@ -1115,8 +1115,7 @@ setup_opencode_agents_only() {
     _opencode_dir="$_project_root/.opencode"
     
     if [ "$_dry_run" -eq 0 ]; then
-        mkdir -p "$_opencode_dir/agents/ai-knowledge-rust"
-        mkdir -p "$_opencode_dir/agents/ai-knowledge-architecture"
+        mkdir -p "$_opencode_dir/agents"
     fi
     
     # Generate guidelines lists
@@ -1125,16 +1124,16 @@ setup_opencode_agents_only() {
     
     # Setup ai-knowledge-rust agent
     log_debug "Creating ai-knowledge-rust agent..."
-    if _template_path=$(find_template "agents/opencode/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
+    if _template_path=$(find_template "agents/opencode/ai-knowledge-rust.md.template" "$_project_root"); then
         if [ "$_dry_run" -eq 0 ]; then
             substitute_template_simple \
                 "$_template_path" \
-                "$_opencode_dir/agents/ai-knowledge-rust/AGENT.md" \
+                "$_opencode_dir/agents/ai-knowledge-rust.md" \
                 "$_project_root" \
                 "$_rust_list" \
                 "$_arch_list"
         else
-            echo "  Would create: .opencode/agents/ai-knowledge-rust/AGENT.md"
+            echo "  Would create: .opencode/agents/ai-knowledge-rust.md"
             echo "    from: $_template_path"
         fi
     else
@@ -1143,16 +1142,16 @@ setup_opencode_agents_only() {
     
     # Setup ai-knowledge-architecture agent
     log_debug "Creating ai-knowledge-architecture agent..."
-    if _template_path=$(find_template "agents/opencode/ai-knowledge-architecture.AGENT.md.template" "$_project_root"); then
+    if _template_path=$(find_template "agents/opencode/ai-knowledge-architecture.md.template" "$_project_root"); then
         if [ "$_dry_run" -eq 0 ]; then
             substitute_template_simple \
                 "$_template_path" \
-                "$_opencode_dir/agents/ai-knowledge-architecture/AGENT.md" \
+                "$_opencode_dir/agents/ai-knowledge-architecture.md" \
                 "$_project_root" \
                 "$_rust_list" \
                 "$_arch_list"
         else
-            echo "  Would create: .opencode/agents/ai-knowledge-architecture/AGENT.md"
+            echo "  Would create: .opencode/agents/ai-knowledge-architecture.md"
             echo "    from: $_template_path"
         fi
     else
@@ -1176,8 +1175,7 @@ setup_claude_agents_only() {
     _claude_dir="$_project_root/.claude"
     
     if [ "$_dry_run" -eq 0 ]; then
-        mkdir -p "$_claude_dir/agents/ai-knowledge-rust"
-        mkdir -p "$_claude_dir/agents/ai-knowledge-architecture"
+        mkdir -p "$_claude_dir/agents"
     fi
     
     # Generate guidelines lists
@@ -1186,16 +1184,16 @@ setup_claude_agents_only() {
     
     # Setup ai-knowledge-rust agent
     log_debug "Creating ai-knowledge-rust agent..."
-    if _template_path=$(find_template "agents/claude/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
+    if _template_path=$(find_template "agents/claude/ai-knowledge-rust.md.template" "$_project_root"); then
         if [ "$_dry_run" -eq 0 ]; then
             substitute_template_simple \
                 "$_template_path" \
-                "$_claude_dir/agents/ai-knowledge-rust/AGENT.md" \
+                "$_claude_dir/agents/ai-knowledge-rust.md" \
                 "$_project_root" \
                 "$_rust_list" \
                 "$_arch_list"
         else
-            echo "  Would create: .claude/agents/ai-knowledge-rust/AGENT.md"
+            echo "  Would create: .claude/agents/ai-knowledge-rust.md"
             echo "    from: $_template_path"
         fi
     else
@@ -1204,16 +1202,16 @@ setup_claude_agents_only() {
     
     # Setup ai-knowledge-architecture agent
     log_debug "Creating ai-knowledge-architecture agent..."
-    if _template_path=$(find_template "agents/claude/ai-knowledge-architecture.AGENT.md.template" "$_project_root"); then
+    if _template_path=$(find_template "agents/claude/ai-knowledge-architecture.md.template" "$_project_root"); then
         if [ "$_dry_run" -eq 0 ]; then
             substitute_template_simple \
                 "$_template_path" \
-                "$_claude_dir/agents/ai-knowledge-architecture/AGENT.md" \
+                "$_claude_dir/agents/ai-knowledge-architecture.md" \
                 "$_project_root" \
                 "$_rust_list" \
                 "$_arch_list"
         else
-            echo "  Would create: .claude/agents/ai-knowledge-architecture/AGENT.md"
+            echo "  Would create: .claude/agents/ai-knowledge-architecture.md"
             echo "    from: $_template_path"
         fi
     else
