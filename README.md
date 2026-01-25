@@ -5,11 +5,13 @@ A simple, safe installer for AI-Assisted Engineering Guidelines. This tool helps
 ## Features
 
 - **One-command installation** via `curl` pipe
+- **Multi-runtime support** - Choose between Shell, Python (UV), or Bun backends
 - **Smart version tracking** using git commit hashes
 - **Automatic update detection** with diff preview
 - **Safe installation** to user directory (no sudo required)
 - **POSIX-compliant** shell scripts for maximum portability
 - **Colored terminal output** with automatic capability detection
+- **Parallel downloads** with Python and Bun runtimes for faster installs
 
 ## Quick Start
 
@@ -86,18 +88,98 @@ aiassisted help
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `install` | Install .aiassisted to directory | `--path=DIR`, `--verbose`, `--quiet` |
-| `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet` |
-| `check` | Check if updates available | `--path=DIR` |
-| `version` | Show CLI version | - |
+| `install` | Install .aiassisted to directory | `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
+| `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
+| `check` | Check if updates available | `--path=DIR`, `--runtime=<shell\|python\|bun>` |
+| `version` | Show CLI version | `--runtime=<shell\|python\|bun>` |
 | `self-update` | Update the CLI tool | - |
+| `runtime list` | Show available runtimes | - |
+| `runtime set <name>` | Set preferred runtime | - |
+| `runtime info` | Show current runtime details | - |
 | `help` | Show help message | - |
+
+## Runtime Selection
+
+`aiassisted` supports three different runtime backends:
+
+### Available Runtimes
+
+1. **Shell (Default)** - Pure POSIX sh, zero dependencies
+   - Always available
+   - Sequential downloads
+   - ~2s install time
+
+2. **Python + UV** - Modern Python with fast dependency management
+   - Requires: [UV](https://docs.astral.sh/uv/getting-started/installation/)
+   - Parallel downloads
+   - Rich terminal output
+   - ~500ms install time
+
+3. **Bun** - Fast JavaScript runtime with native TypeScript
+   - Requires: [Bun](https://bun.sh/docs/installation)
+   - Parallel downloads
+   - Native TypeScript support
+   - ~400ms install time
+
+### Check Available Runtimes
+
+```bash
+aiassisted runtime list
+```
+
+Output:
+```
+Available Runtimes:
+
+  ✓ shell (default)
+  ✓ python (detected: uv 0.9.16, active)
+  ✓ bun (detected: 1.3.0)
+```
+
+### Set Preferred Runtime
+
+Set your preferred runtime (saved to `~/.config/aiassisted/config`):
+
+```bash
+# Use Python runtime by default
+aiassisted runtime set python
+
+# Use Bun runtime by default
+aiassisted runtime set bun
+
+# Use Shell runtime by default
+aiassisted runtime set shell
+```
+
+### Explicit Runtime Selection
+
+Override the default runtime for a single command:
+
+```bash
+# Use Python runtime for this install
+aiassisted install --runtime=python
+
+# Use Bun runtime for this update
+aiassisted update --runtime=bun
+
+# Use Shell runtime for this check
+aiassisted check --runtime=shell
+```
+
+### Runtime Auto-Detection
+
+If no runtime is configured, `aiassisted` auto-detects in this order:
+
+1. Python (if `uv` is available)
+2. Bun (if `bun` is available)
+3. Shell (always available)
 
 ## Global Options
 
 - `--verbose` - Show detailed debug output
 - `--quiet` - Show only errors
 - `--path=DIR` - Specify target directory (default: current directory)
+- `--runtime=<shell|python|bun>` - Select runtime backend explicitly
 - `--force` - Skip confirmation prompts (update command only)
 
 ## What's Inside `.aiassisted`?

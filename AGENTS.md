@@ -4,17 +4,28 @@ This document provides guidelines for AI coding agents working in the `aiassiste
 
 ## Project Overview
 
-A POSIX-compliant shell script installer for AI-Assisted Engineering Guidelines. The project installs and manages `.aiassisted` directories with guidelines, instructions, and prompts for AI development workflows.
+A multi-runtime CLI tool for AI-Assisted Engineering Guidelines. The project installs and manages `.aiassisted` directories with guidelines, instructions, and prompts for AI development workflows.
 
 **Key Components:**
 - `install.sh` - One-command installer script (pipe to sh)
-- `bin/aiassisted` - CLI tool for managing `.aiassisted` installations
+- `bin/aiassisted` - Shell orchestrator that delegates to runtime backends
+- `src/shell/` - POSIX-compliant shell runtime
+- `src/python/` - Python + UV runtime
+- `src/bun/` - Bun + TypeScript runtime
 - `.aiassisted/` - Guidelines, instructions, and prompts directory
+
+**Architecture:**
+The project uses a **multi-runtime architecture** where a shell orchestrator (`bin/aiassisted`) detects and delegates commands to one of three runtime backends:
+1. **Shell** (default) - Pure POSIX sh, zero dependencies
+2. **Python + UV** - Modern Python with parallel downloads
+3. **Bun + TypeScript** - Fast JavaScript runtime
+
+See `ARCHITECTURE.md` for complete design details.
 
 ## Build, Lint, and Test Commands
 
 ### No Build Required
-This is a pure shell script project with no compilation step.
+The shell runtime requires no compilation. Python and Bun runtimes have dependency management but no build step.
 
 ### Using Make (Recommended)
 
@@ -27,62 +38,107 @@ make help
 # Update version after editing .aiassisted/
 make update-version
 
-# Run all tests
+# Run all tests (all runtimes)
 make test
 
-# Lint shell scripts (requires shellcheck)
+# Test specific runtime
+make test-shell
+make test-python
+make test-bun
+
+# Lint all code (shell, python, typescript)
 make lint
 
-# Show project status
+# Lint specific runtime
+make lint-shell
+make lint-python
+make lint-bun
+
+# Install dependencies
+make deps-python   # Install Python dependencies via UV
+make deps-bun      # Install Bun dependencies
+make deps          # Install all dependencies
+
+# Show project status (includes runtime availability)
 make status
 
-# Clean temporary files
+# Clean temporary files and build artifacts
 make clean
 ```
 
 ### Testing
-Currently no automated test suite exists.
+
+**Automated Testing:**
+```bash
+# Test all runtimes
+make test
+
+# Test specific runtime
+make test-shell    # Test shell runtime
+make test-python   # Test Python runtime (skips if UV not installed)
+make test-bun      # Test Bun runtime (skips if Bun not installed)
+```
 
 **Manual Testing:**
 ```bash
 # Test the installer
 ./install.sh
 
-# Test CLI commands
+# Test CLI commands (uses auto-detected runtime)
 ./bin/aiassisted help
-./bin/aiassisted install --path=/tmp/test-project
-./bin/aiassisted check --path=/tmp/test-project
-./bin/aiassisted update --path=/tmp/test-project
+./bin/aiassisted version
+./bin/aiassisted runtime list
 
-# Test with different shells
-sh ./bin/aiassisted help
-bash ./bin/aiassisted help
-zsh ./bin/aiassisted help
+# Test specific runtime
+./bin/aiassisted install --runtime=shell --path=/tmp/test-shell
+./bin/aiassisted install --runtime=python --path=/tmp/test-python
+./bin/aiassisted install --runtime=bun --path=/tmp/test-bun
+
+# Test runtime commands
+./bin/aiassisted runtime list
+./bin/aiassisted runtime set python
+./bin/aiassisted runtime info
 ```
 
 ### Linting
-```bash
-# Check POSIX compliance with shellcheck (if available)
-shellcheck install.sh bin/aiassisted
 
-# Verify script executes without errors
-sh -n install.sh
-sh -n bin/aiassisted
+**All Runtimes:**
+```bash
+make lint           # Lint all code (graceful)
+make lint-strict    # Lint all code (fails if linters missing)
+```
+
+**Specific Runtimes:**
+```bash
+# Shell - Check POSIX compliance with shellcheck
+make lint-shell
+shellcheck install.sh bin/aiassisted src/shell/core.sh
+
+# Python - Check with ruff (optional)
+make lint-python
+cd src/python && uv run ruff check aiassisted/
+
+# TypeScript - Type check with tsc
+make lint-bun
+cd src/bun && bun run tsc --noEmit
 ```
 
 ### Running Single Test
-Since there are no automated tests, validate specific functionality:
 ```bash
-# Test a specific command
-./bin/aiassisted version
+# Test a specific command with specific runtime
+./bin/aiassisted version --runtime=shell
+./bin/aiassisted version --runtime=python
+./bin/aiassisted version --runtime=bun
 
 # Test with verbose output
-./bin/aiassisted install --verbose --path=/tmp/test
+./bin/aiassisted install --verbose --runtime=python --path=/tmp/test
 ```
 
 ## Code Style Guidelines
 
 ### Shell Scripting Standards
+
+**Note:** Shell scripts are used for the orchestrator (`bin/aiassisted`) and the shell runtime (`src/shell/core.sh`). Follow these guidelines for all shell code.
 
 #### POSIX Compliance
 - **MUST** be POSIX-compliant (sh, dash, ash, bash, zsh compatible)
@@ -206,6 +262,136 @@ case "$_response" in
 esac
 ```
 
+### Python Style Guidelines
+
+**Note:** Python code is in `src/python/aiassisted/`. Follow PEP 8 and modern Python best practices.
+
+#### Project Structure
+```python
+# Use type hints throughout
+from typing import Optional
+from pathlib import Path
+
+def download_file(url: str, output_path: Path) -> bool:
+    """Download file from URL to output path
+    
+    Args:
+        url: URL to download from
+        output_path: Path to save file to
+        
+    Returns:
+        True on success, False on failure
+    """
+    pass
+```
+
+#### Naming Conventions
+- **Classes:** PascalCase (e.g., `Installer`, `Manifest`)
+- **Functions/Methods:** snake_case (e.g., `download_file`, `verify_checksum`)
+- **Constants:** UPPER_SNAKE_CASE (e.g., `VERSION`, `GITHUB_REPO`)
+- **Private methods:** prefix with underscore (e.g., `_log_debug`)
+
+#### Dependencies
+- Use **httpx** for HTTP requests (modern async support)
+- Use **rich** for terminal output (colors, formatting)
+- Keep dependencies minimal
+- Use `dependency-groups` for dev dependencies (not deprecated `tool.uv.dev-dependencies`)
+
+#### Error Handling
+```python
+try:
+    result = operation()
+except httpx.HTTPError as e:
+    console.print(f"[red][ERROR][/red] HTTP error: {e}", file=sys.stderr)
+    return False
+except Exception as e:
+    console.print(f"[red][ERROR][/red] Unexpected error: {e}", file=sys.stderr)
+    return False
+```
+
+#### Logging
+```python
+# Use rich console for colored output
+from rich.console import Console
+
+console = Console()
+
+def log_error(message: str):
+    console.print(f"[bold red][ERROR][/bold red] {message}", file=sys.stderr)
+
+def log_success(message: str):
+    if verbosity >= 1:
+        console.print(f"[bold green][SUCCESS][/bold green] {message}")
+```
+
+### TypeScript Style Guidelines
+
+**Note:** TypeScript code is in `src/bun/src/`. Use modern TypeScript with strict type checking.
+
+#### Project Structure
+```typescript
+// Use explicit types throughout
+export interface InstallerOptions {
+  githubRepo: string;
+  verbosity?: number;
+}
+
+export class Installer {
+  private githubRepo: string;
+  private verbosity: number;
+  
+  constructor(options: InstallerOptions) {
+    this.githubRepo = options.githubRepo;
+    this.verbosity = options.verbosity ?? 1;
+  }
+  
+  async downloadFile(url: string, outputPath: string): Promise<boolean> {
+    // Implementation
+  }
+}
+```
+
+#### Naming Conventions
+- **Classes/Interfaces:** PascalCase (e.g., `Installer`, `ManifestOptions`)
+- **Functions/Methods:** camelCase (e.g., `downloadFile`, `verifyChecksum`)
+- **Constants:** UPPER_SNAKE_CASE (e.g., `VERSION`, `GITHUB_REPO`)
+- **Private fields:** prefix with `private` keyword
+
+#### Dependencies
+- **Zero external dependencies** - Use native Bun APIs
+- `Bun.file()` for file operations
+- `fetch()` for HTTP requests
+- Native `crypto` for checksums
+- Use `@types/bun` for type definitions
+
+#### Error Handling
+```typescript
+try {
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.error(`\x1b[31m[ERROR]\x1b[0m HTTP ${response.status}`);
+    return false;
+  }
+  return true;
+} catch (error) {
+  console.error(`\x1b[31m[ERROR]\x1b[0m ${error}`);
+  return false;
+}
+```
+
+#### ANSI Color Codes
+```typescript
+// Use ANSI escape codes for terminal colors
+const COLOR_RED = '\x1b[31m';
+const COLOR_GREEN = '\x1b[32m';
+const COLOR_YELLOW = '\x1b[33m';
+const COLOR_BLUE = '\x1b[34m';
+const COLOR_RESET = '\x1b[0m';
+const COLOR_BOLD = '\x1b[1m';
+
+console.log(`${COLOR_GREEN}[SUCCESS]${COLOR_RESET} Message`);
+```
+
 ### Documentation
 
 #### Script Headers
@@ -317,6 +503,14 @@ _temp_dir=$(mktemp -d)
 3. **Test**: `make test`
 4. **Commit**: `git add .aiassisted/ && git commit -m 'docs: update guidelines'`
 
+### When Updating Runtime Implementations
+1. **Edit code** in `src/shell/`, `src/python/`, or `src/bun/`
+2. **Install dependencies** (if needed): `make deps-python` or `make deps-bun`
+3. **Lint code**: `make lint` or `make lint-<runtime>`
+4. **Test runtime**: `make test-<runtime>`
+5. **Test all runtimes**: `make test`
+6. **Commit** with conventional commit message
+
 ### Manual Testing
 
 ## Repository Structure
@@ -324,7 +518,28 @@ _temp_dir=$(mktemp -d)
 ```
 aiassisted/
 ├── bin/
-│   └── aiassisted          # Main CLI tool
+│   └── aiassisted          # Shell orchestrator (entry point)
+├── src/
+│   ├── shell/
+│   │   └── core.sh        # Shell runtime implementation
+│   ├── python/
+│   │   ├── pyproject.toml # UV project definition
+│   │   └── aiassisted/    # Python package
+│   │       ├── __init__.py
+│   │       ├── __main__.py
+│   │       ├── cli.py
+│   │       ├── installer.py
+│   │       ├── manifest.py
+│   │       └── downloader.py
+│   └── bun/
+│       ├── package.json   # Bun project definition
+│       ├── tsconfig.json
+│       └── src/
+│           ├── index.ts
+│           ├── cli.ts
+│           ├── installer.ts
+│           ├── manifest.ts
+│           └── downloader.ts
 ├── scripts/
 │   └── update-version.sh   # Helper to update version and manifest
 ├── .aiassisted/            # Guidelines and instructions
@@ -337,6 +552,8 @@ aiassisted/
 ├── Makefile               # Maintainer tasks
 ├── README.md             # User documentation
 ├── AGENTS.md             # This file
+├── ARCHITECTURE.md        # Multi-runtime design document
+├── .gitignore            # Git ignore rules
 └── LICENSE               # MIT License
 ```
 
@@ -375,3 +592,23 @@ instructions/rust.instructions.md:7d18292fa0f3b01b90410cb0bc684c7a1b2247d16f73bc
 3. Commit both content changes and updated `FILES.txt`
 
 **Never hardcode file lists** in shell scripts - always use the manifest approach.
+
+## Zero Warnings Policy
+
+The project enforces a **zero warnings policy** to ensure code quality:
+
+- **Shell**: All shellcheck warnings must be addressed or explicitly disabled with comments
+- **Python**: No deprecation warnings from UV or dependencies
+- **TypeScript**: TypeScript compiler must pass with zero errors
+- **Tests**: `make test` must produce clean output with no warnings
+
+When you see warnings:
+1. Fix the underlying issue if possible
+2. If intentional, add explicit suppression with comment explaining why
+3. Update dependencies if warnings are due to deprecations (e.g., `tool.uv.dev-dependencies` → `dependency-groups`)
+
+Example shellcheck suppression:
+```bash
+# shellcheck disable=SC2086  # Intentional word splitting for $_filtered_args
+exec sh "$SCRIPT_DIR/src/shell/core.sh" $_filtered_args
+```

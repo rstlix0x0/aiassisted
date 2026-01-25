@@ -1,0 +1,44 @@
+# Python / UV
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+uv.lock
+
+# Bun
+node_modules/
+bun.lock
+
+# Shell
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Test artifacts
+/tmp/
+*.test
+test-*/
+
+# Build artifacts
+*.tar.gz
+*.zip

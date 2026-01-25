@@ -2,29 +2,31 @@
 #
 # aiassisted - AI-Assisted Engineering Guidelines Installer
 # 
-# A simple CLI tool to install and manage .aiassisted directory
-# in your projects for consistent AI-assisted development practices.
+# A multi-runtime CLI orchestrator that delegates to shell, Python (UV), or Bun backends.
 #
 # Usage:
-#   aiassisted install [--path=DIR] [--verbose] [--quiet]
-#   aiassisted update [--force] [--path=DIR] [--verbose] [--quiet]
-#   aiassisted check [--path=DIR]
-#   aiassisted version
+#   aiassisted install [--path=DIR] [--verbose] [--quiet] [--runtime=<shell|python|bun>]
+#   aiassisted update [--force] [--path=DIR] [--verbose] [--quiet] [--runtime=<shell|python|bun>]
+#   aiassisted check [--path=DIR] [--runtime=<shell|python|bun>]
+#   aiassisted version [--runtime=<shell|python|bun>]
 #   aiassisted self-update
+#   aiassisted runtime list
+#   aiassisted runtime set <shell|python|bun>
 #   aiassisted help
 #
 
 set -e
 
-# Version
-VERSION="1.0.0"
+# Version (used by version command in some contexts)
+# shellcheck disable=SC2034
+VERSION="2.0.0"
 
-# GitHub repository
-GITHUB_REPO="rstlix0x0/aiassisted"
-GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Verbosity levels: 0=quiet, 1=normal, 2=verbose
-VERBOSITY=1
+# Config file location
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aiassisted"
+CONFIG_FILE="$CONFIG_DIR/config"
 
 # Color support detection
 if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
@@ -56,717 +58,277 @@ log_error() {
 }
 
 log_success() {
-    if [ "$VERBOSITY" -ge 1 ]; then
-        printf "%s[SUCCESS]%s %s\n" "$COLOR_GREEN" "$COLOR_RESET" "$1"
-    fi
+    printf "%s[SUCCESS]%s %s\n" "$COLOR_GREEN" "$COLOR_RESET" "$1"
 }
 
 log_info() {
-    if [ "$VERBOSITY" -ge 1 ]; then
-        printf "%s[INFO]%s %s\n" "$COLOR_BLUE" "$COLOR_RESET" "$1"
-    fi
+    printf "%s[INFO]%s %s\n" "$COLOR_BLUE" "$COLOR_RESET" "$1"
 }
 
 log_warn() {
-    if [ "$VERBOSITY" -ge 1 ]; then
-        printf "%s[WARN]%s %s\n" "$COLOR_YELLOW" "$COLOR_RESET" "$1"
-    fi
-}
-
-log_debug() {
-    if [ "$VERBOSITY" -ge 2 ]; then
-        printf "%s[DEBUG]%s %s\n" "$COLOR_BLUE" "$COLOR_RESET" "$1"
-    fi
+    printf "%s[WARN]%s %s\n" "$COLOR_YELLOW" "$COLOR_RESET" "$1"
 }
 
 ###########################################
-# Utility Functions
+# Runtime Detection
 ###########################################
 
-# Detect download tool (curl or wget)
-detect_download_tool() {
-    if command -v curl >/dev/null 2>&1; then
-        echo "curl"
-    elif command -v wget >/dev/null 2>&1; then
-        echo "wget"
-    else
-        log_error "Neither curl nor wget found. Please install one of them."
-        exit 1
+# Detect available runtimes
+# Returns: space-separated list of available runtimes
+detect_available_runtimes() {
+    _available=""
+    
+    # Shell is always available
+    _available="shell"
+    
+    # Check for UV (Python)
+    if command -v uv >/dev/null 2>&1; then
+        _available="$_available python"
     fi
+    
+    # Check for Bun
+    if command -v bun >/dev/null 2>&1; then
+        _available="$_available bun"
+    fi
+    
+    echo "$_available"
 }
 
-# Download file
-# Usage: download_file <url> <output_file>
-download_file() {
-    _url="$1"
-    _output="$2"
-    _tool=$(detect_download_tool)
+# Get preferred runtime from config or auto-detect
+get_preferred_runtime() {
+    _explicit_runtime=""
     
-    log_debug "Downloading $_url to $_output using $_tool"
-    
-    if [ "$_tool" = "curl" ]; then
-        if ! curl -fsSL "$_url" -o "$_output"; then
-            log_error "Failed to download $_url"
-            return 1
-        fi
-    else
-        if ! wget -q "$_url" -O "$_output"; then
-            log_error "Failed to download $_url"
-            return 1
-        fi
-    fi
-    
-    return 0
-}
-
-# Check if directory is writable
-is_writable() {
-    [ -w "$1" ] || [ ! -e "$1" ]
-}
-
-# Parse version file
-# Usage: parse_version_file <file> <key>
-parse_version_file() {
-    _file="$1"
-    _key="$2"
-    
-    if [ ! -f "$_file" ]; then
-        return 1
-    fi
-    
-    # Extract value from KEY=VALUE format
-    grep "^${_key}=" "$_file" | cut -d'=' -f2
-}
-
-# Detect SHA256 tool
-detect_sha256_tool() {
-    if command -v sha256sum >/dev/null 2>&1; then
-        echo "sha256sum"
-    elif command -v shasum >/dev/null 2>&1; then
-        echo "shasum"
-    elif command -v openssl >/dev/null 2>&1; then
-        echo "openssl"
-    else
-        log_error "No SHA256 tool found (sha256sum, shasum, or openssl required)"
-        exit 1
-    fi
-}
-
-# Calculate SHA256 checksum of a file
-# Usage: calculate_sha256 <file>
-# Returns: SHA256 hash string
-calculate_sha256() {
-    _file="$1"
-    _tool=$(detect_sha256_tool)
-    
-    case "$_tool" in
-        sha256sum)
-            sha256sum "$_file" | cut -d' ' -f1
-            ;;
-        shasum)
-            shasum -a 256 "$_file" | cut -d' ' -f1
-            ;;
-        openssl)
-            openssl dgst -sha256 "$_file" | cut -d' ' -f2
-            ;;
-    esac
-}
-
-# Verify file checksum
-# Usage: verify_checksum <file> <expected_hash>
-# Returns: 0 if match, 1 if mismatch
-verify_checksum() {
-    _file="$1"
-    _expected="$2"
-    
-    if [ ! -f "$_file" ]; then
-        return 1
-    fi
-    
-    _actual=$(calculate_sha256 "$_file")
-    
-    if [ "$_actual" = "$_expected" ]; then
-        return 0
-    else
-        log_debug "Checksum mismatch for $_file"
-        log_debug "  Expected: $_expected"
-        log_debug "  Actual:   $_actual"
-        return 1
-    fi
-}
-
-###########################################
-# Core Functions
-###########################################
-
-# Fetch remote version info
-fetch_remote_version() {
-    _temp_version=$(mktemp)
-    
-    if ! download_file "${GITHUB_RAW_URL}/.aiassisted/.version" "$_temp_version"; then
-        rm -f "$_temp_version"
-        return 1
-    fi
-    
-    echo "$_temp_version"
-}
-
-# Compare versions
-# Returns: 0 if same, 1 if different
-compare_versions() {
-    _local_hash="$1"
-    _remote_hash="$2"
-    
-    if [ "$_local_hash" = "$_remote_hash" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Download .aiassisted directory to temp location
-download_aiassisted() {
-    _temp_dir=$(mktemp -d)
-    _target_dir="$_temp_dir/.aiassisted"
-    
-    mkdir -p "$_target_dir"
-    
-    log_info "Downloading .aiassisted directory..."
-    
-    # Download .version file first
-    if ! download_file "${GITHUB_RAW_URL}/.aiassisted/.version" "$_target_dir/.version"; then
-        rm -rf "$_temp_dir"
-        return 1
-    fi
-    
-    # Download FILES.txt manifest
-    _manifest="$_temp_dir/FILES.txt"
-    if ! download_file "${GITHUB_RAW_URL}/.aiassisted/FILES.txt" "$_manifest"; then
-        log_error "Failed to download FILES.txt manifest"
-        rm -rf "$_temp_dir"
-        return 1
-    fi
-    
-    # Read manifest and download each file with checksum verification
-    while IFS=: read -r _filepath _expected_hash || [ -n "$_filepath" ]; do
-        # Skip empty lines and comments
-        case "$_filepath" in
-            ''|'#'*) continue ;;
-        esac
-        
-        _file_dir="$(dirname "$_filepath")"
-        mkdir -p "$_target_dir/$_file_dir"
-        
-        log_debug "Downloading $_filepath..."
-        if ! download_file "${GITHUB_RAW_URL}/.aiassisted/${_filepath}" "$_target_dir/$_filepath"; then
-            log_error "Failed to download $_filepath"
-            rm -rf "$_temp_dir"
-            return 1
-        fi
-        
-        # Verify checksum
-        if ! verify_checksum "$_target_dir/$_filepath" "$_expected_hash"; then
-            log_error "Checksum verification failed for $_filepath"
-            rm -rf "$_temp_dir"
-            return 1
-        fi
-        log_debug "Verified checksum for $_filepath"
-    done < "$_manifest"
-    
-    # Copy FILES.txt to target
-    cp "$_manifest" "$_target_dir/FILES.txt"
-    
-    log_success "Downloaded .aiassisted directory to $_temp_dir"
-    echo "$_temp_dir"
-}
-
-# Install .aiassisted directory
-install_aiassisted() {
-    _source="$1"
-    _target="$2"
-    
-    log_debug "Installing from $_source to $_target"
-    
-    # Create target directory if it doesn't exist
-    if [ ! -d "$_target" ]; then
-        if ! mkdir -p "$_target"; then
-            log_error "Failed to create directory $_target"
-            return 1
-        fi
-    fi
-    
-    # Copy files
-    if ! cp -r "$_source/.aiassisted" "$_target/"; then
-        log_error "Failed to copy .aiassisted directory"
-        return 1
-    fi
-    
-    log_success "Installed .aiassisted to $_target"
-    return 0
-}
-
-# Download only changed files based on checksums
-# Usage: download_changed_files <target_path> <remote_manifest>
-# Returns: temp directory with only changed files
-download_changed_files() {
-    _target_path="$1"
-    _remote_manifest="$2"
-    _local_manifest="$_target_path/.aiassisted/FILES.txt"
-    
-    _temp_dir=$(mktemp -d)
-    _target_dir="$_temp_dir/.aiassisted"
-    mkdir -p "$_target_dir"
-    
-    _changed_count=0
-    _unchanged_count=0
-    
-    # Read remote manifest and compare with local
-    while IFS=: read -r _filepath _remote_hash || [ -n "$_filepath" ]; do
-        case "$_filepath" in
-            ''|'#'*) continue ;;
-        esac
-        
-        _needs_download=1
-        
-        # Check if file exists locally with same hash
-        if [ -f "$_local_manifest" ]; then
-            _local_hash=$(grep "^${_filepath}:" "$_local_manifest" 2>/dev/null | cut -d: -f2)
-            
-            if [ -n "$_local_hash" ] && [ "$_local_hash" = "$_remote_hash" ]; then
-                _needs_download=0
-                _unchanged_count=$((_unchanged_count + 1))
-                log_debug "Unchanged: $_filepath"
-            fi
-        fi
-        
-        # Download if needed
-        if [ $_needs_download -eq 1 ]; then
-            _file_dir="$(dirname "$_filepath")"
-            mkdir -p "$_target_dir/$_file_dir"
-            
-            log_debug "Downloading changed file: $_filepath..."
-            if ! download_file "${GITHUB_RAW_URL}/.aiassisted/${_filepath}" "$_target_dir/$_filepath"; then
-                log_error "Failed to download $_filepath"
-                rm -rf "$_temp_dir"
-                return 1
-            fi
-            
-            # Verify checksum
-            if ! verify_checksum "$_target_dir/$_filepath" "$_remote_hash"; then
-                log_error "Checksum verification failed for $_filepath"
-                rm -rf "$_temp_dir"
-                return 1
-            fi
-            
-            _changed_count=$((_changed_count + 1))
-        fi
-    done < "$_remote_manifest"
-    
-    log_info "Changed: $_changed_count file(s), Unchanged: $_unchanged_count file(s)"
-    
-    echo "$_temp_dir"
-}
-
-# Generate diff between two directories
-generate_diff() {
-    _old="$1"
-    _new="$2"
-    
-    if command -v diff >/dev/null 2>&1; then
-        diff -ru "$_old" "$_new" 2>/dev/null || true
-    else
-        log_warn "diff command not found, cannot show changes"
-        return 1
-    fi
-}
-
-# Apply selective updates (only changed files)
-# Usage: apply_selective_update <source_temp_dir> <target_path> <remote_manifest>
-apply_selective_update() {
-    _source="$1"
-    _target="$2"
-    _remote_manifest="$3"
-    
-    log_info "Applying selective updates..."
-    
-    _updated=0
-    _skipped=0
-    
-    # Download .version file
-    if ! cp "$_source/.aiassisted/.version" "$_target/.aiassisted/.version"; then
-        log_error "Failed to update .version file"
-        return 1
-    fi
-    
-    # Download FILES.txt manifest
-    if ! cp "$_remote_manifest" "$_target/.aiassisted/FILES.txt"; then
-        log_error "Failed to update FILES.txt manifest"
-        return 1
-    fi
-    
-    # Read manifest and copy only changed files from temp
-    while IFS=: read -r _filepath _hash || [ -n "$_filepath" ]; do
-        case "$_filepath" in
-            ''|'#'*) continue ;;
-        esac
-        
-        _source_file="$_source/.aiassisted/$_filepath"
-        _target_file="$_target/.aiassisted/$_filepath"
-        
-        # If file exists in source temp (was downloaded), copy it
-        if [ -f "$_source_file" ]; then
-            _target_dir="$(dirname "$_target_file")"
-            mkdir -p "$_target_dir"
-            
-            if ! cp "$_source_file" "$_target_file"; then
-                log_error "Failed to update $_filepath"
-                return 1
-            fi
-            
-            log_debug "Updated: $_filepath"
-            _updated=$((_updated + 1))
-        else
-            _skipped=$((_skipped + 1))
-        fi
-    done < "$_remote_manifest"
-    
-    log_success "Updated $_updated file(s), skipped $_skipped unchanged file(s)"
-    return 0
-}
-
-# Prompt user for confirmation
-prompt_confirm() {
-    _prompt="$1"
-    
-    printf "%s%s [y/N]:%s " "$COLOR_YELLOW" "$_prompt" "$COLOR_RESET"
-    read -r _response
-    
-    case "$_response" in
-        [yY]|[yY][eE][sS])
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
-###########################################
-# Command Implementations
-###########################################
-
-cmd_install() {
-    _target_path="${1:-.}"
-    
-    # Resolve to absolute path
-    _target_path=$(cd "$_target_path" 2>/dev/null && pwd || echo "$_target_path")
-    
-    log_info "Installing .aiassisted to $_target_path"
-    
-    # Check if .aiassisted already exists
-    if [ -d "$_target_path/.aiassisted" ]; then
-        if [ -f "$_target_path/.aiassisted/.version" ]; then
-            _local_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
-            
-            # Fetch remote version
-            if ! _remote_version_file=$(fetch_remote_version); then
-                log_error "Failed to fetch remote version information"
-                exit 1
-            fi
-            
-            _remote_hash=$(parse_version_file "$_remote_version_file" "COMMIT_HASH")
-            rm -f "$_remote_version_file"
-            
-            if compare_versions "$_local_hash" "$_remote_hash"; then
-                log_success ".aiassisted is already up-to-date (version: $_local_hash)"
-                exit 0
-            else
-                log_warn ".aiassisted already exists but is outdated"
-                log_info "Current version: $_local_hash"
-                log_info "Latest version:  $_remote_hash"
-                log_info "Run 'aiassisted update' to update to the latest version"
-                exit 0
-            fi
-        else
-            log_warn ".aiassisted exists but no version information found"
-            log_info "Run 'aiassisted update --force' to overwrite with the latest version"
-            exit 0
-        fi
-    fi
-    
-    # Download .aiassisted
-    if ! _temp_dir=$(download_aiassisted); then
-        log_error "Failed to download .aiassisted"
-        exit 1
-    fi
-    
-    # Install
-    if ! install_aiassisted "$_temp_dir" "$_target_path"; then
-        rm -rf "$_temp_dir"
-        exit 1
-    fi
-    
-    rm -rf "$_temp_dir"
-    
-    # Show version info
-    _installed_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
-    log_success "Successfully installed .aiassisted (version: $_installed_hash)"
-    
-    # Show quick tips
-    printf "\n%s%sQuick Tips:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
-    printf "  • Your .aiassisted directory is now ready to use\n"
-    printf "  • Update to latest version: %saiassisted update%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  • Check for updates: %saiassisted check%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  • View all commands: %saiassisted help%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
-}
-
-cmd_update() {
-    _force=0
-    _target_path="."
-    
-    # Parse arguments
+    # Check for --runtime flag in args
     for _arg in "$@"; do
         case "$_arg" in
-            --force)
-                _force=1
-                ;;
-            --path=*)
-                _target_path="${_arg#*=}"
+            --runtime=*)
+                _explicit_runtime="${_arg#*=}"
                 ;;
         esac
     done
     
-    # Resolve to absolute path
-    _target_path=$(cd "$_target_path" 2>/dev/null && pwd || echo "$_target_path")
-    
-    log_info "Checking for updates in $_target_path"
-    
-    # Check if .aiassisted exists
-    if [ ! -d "$_target_path/.aiassisted" ]; then
-        log_error ".aiassisted not found in $_target_path"
-        log_info "Run 'aiassisted install' first"
-        exit 1
+    # If explicit runtime specified, use it
+    if [ -n "$_explicit_runtime" ]; then
+        echo "$_explicit_runtime"
+        return 0
     fi
     
-    # Get local version
-    if [ ! -f "$_target_path/.aiassisted/.version" ]; then
-        log_warn "No version information found locally"
-        _local_hash="unknown"
-    else
-        _local_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
-    fi
-    
-    # Fetch remote version
-    if ! _remote_version_file=$(fetch_remote_version); then
-        log_error "Failed to fetch remote version information"
-        exit 1
-    fi
-    
-    _remote_hash=$(parse_version_file "$_remote_version_file" "COMMIT_HASH")
-    rm -f "$_remote_version_file"
-    
-    log_debug "Local version:  $_local_hash"
-    log_debug "Remote version: $_remote_hash"
-    
-    # Compare versions
-    if [ "$_local_hash" != "unknown" ] && compare_versions "$_local_hash" "$_remote_hash"; then
-        log_success ".aiassisted is already up-to-date (version: $_local_hash)"
-        exit 0
-    fi
-    
-    log_info "Update available!"
-    log_info "Current version: $_local_hash"
-    log_info "Latest version:  $_remote_hash"
-    
-    # Download remote manifest first to check what files changed
-    _remote_manifest=$(mktemp)
-    if ! download_file "${GITHUB_RAW_URL}/.aiassisted/FILES.txt" "$_remote_manifest"; then
-        log_error "Failed to download remote manifest"
-        rm -f "$_remote_manifest"
-        exit 1
-    fi
-    
-    # Download only changed files
-    if ! _temp_dir=$(download_changed_files "$_target_path" "$_remote_manifest"); then
-        log_error "Failed to download changed files"
-        rm -f "$_remote_manifest"
-        exit 1
-    fi
-    
-    # Download .version file
-    if ! download_file "${GITHUB_RAW_URL}/.aiassisted/.version" "$_temp_dir/.aiassisted/.version"; then
-        log_error "Failed to download .version file"
-        rm -rf "$_temp_dir"
-        rm -f "$_remote_manifest"
-        exit 1
-    fi
-    
-    # Show diff unless --force
-    if [ $_force -eq 0 ]; then
-        # Check if there are any changed files in temp dir
-        _has_changes=0
-        if [ -d "$_temp_dir/.aiassisted" ] && [ "$(find "$_temp_dir/.aiassisted" -type f | wc -l)" -gt 0 ]; then
-            _has_changes=1
+    # Check config file
+    if [ -f "$CONFIG_FILE" ]; then
+        _config_runtime=$(grep "^RUNTIME=" "$CONFIG_FILE" 2>/dev/null | cut -d'=' -f2)
+        if [ -n "$_config_runtime" ]; then
+            echo "$_config_runtime"
+            return 0
         fi
-        
-        if [ $_has_changes -eq 1 ]; then
-            printf "\n%s%sChanges to be applied:%s\n\n" "$COLOR_BOLD" "$COLOR_YELLOW" "$COLOR_RESET"
-            
-            _diff_output=$(generate_diff "$_target_path/.aiassisted" "$_temp_dir/.aiassisted")
-            
-            if [ -n "$_diff_output" ]; then
-                echo "$_diff_output" | head -n 100
-                _diff_lines=$(echo "$_diff_output" | wc -l | tr -d '[:space:]')
-                if [ "$_diff_lines" -gt 100 ]; then
-                    printf "\n%s... (%d more lines)%s\n\n" "$COLOR_BLUE" "$((_diff_lines - 100))" "$COLOR_RESET"
-                else
-                    printf "\n"
-                fi
+    fi
+    
+    # Auto-detect: prefer python > bun > shell
+    _available=$(detect_available_runtimes)
+    
+    case "$_available" in
+        *python*)
+            echo "python"
+            ;;
+        *bun*)
+            echo "bun"
+            ;;
+        *)
+            echo "shell"
+            ;;
+    esac
+}
+
+# Verify runtime is available
+# Returns: 0 if available, 1 if not
+verify_runtime() {
+    _runtime="$1"
+    
+    case "$_runtime" in
+        shell)
+            return 0
+            ;;
+        python)
+            if command -v uv >/dev/null 2>&1; then
+                return 0
+            else
+                log_error "Python runtime requires 'uv' to be installed"
+                log_info "Install UV: https://docs.astral.sh/uv/getting-started/installation/"
+                return 1
             fi
+            ;;
+        bun)
+            if command -v bun >/dev/null 2>&1; then
+                return 0
+            else
+                log_error "Bun runtime requires 'bun' to be installed"
+                log_info "Install Bun: https://bun.sh/docs/installation"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "Unknown runtime: $_runtime"
+            return 1
+            ;;
+    esac
+}
+
+###########################################
+# Runtime Commands
+###########################################
+
+cmd_runtime_list() {
+    printf "\n%s%sAvailable Runtimes:%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+    
+    _available=$(detect_available_runtimes)
+    _preferred=$(get_preferred_runtime "$@")
+    
+    # Shell
+    if echo "$_available" | grep -q "shell"; then
+        if [ "$_preferred" = "shell" ]; then
+            printf "  %s✓ shell%s (default, active)\n" "$COLOR_GREEN" "$COLOR_RESET"
         else
-            printf "\n%s%sNo file content changes (version metadata update only)%s\n\n" "$COLOR_BLUE" "$COLOR_BOLD" "$COLOR_RESET"
-        fi
-        
-        if ! prompt_confirm "Apply these changes?"; then
-            log_info "Update cancelled"
-            rm -rf "$_temp_dir"
-            rm -f "$_remote_manifest"
-            exit 0
+            printf "  %s✓ shell%s (default)\n" "$COLOR_GREEN" "$COLOR_RESET"
         fi
     fi
     
-    # Apply selective updates (only changed files)
-    if ! apply_selective_update "$_temp_dir" "$_target_path" "$_remote_manifest"; then
-        rm -rf "$_temp_dir"
-        rm -f "$_remote_manifest"
-        exit 1
-    fi
-    
-    rm -rf "$_temp_dir"
-    rm -f "$_remote_manifest"
-    
-    log_success "Successfully updated to version $_remote_hash"
-}
-
-cmd_check() {
-    _target_path="${1:-.}"
-    
-    # Resolve to absolute path
-    _target_path=$(cd "$_target_path" 2>/dev/null && pwd || echo "$_target_path")
-    
-    log_info "Checking version in $_target_path"
-    
-    # Check if .aiassisted exists
-    if [ ! -d "$_target_path/.aiassisted" ]; then
-        log_error ".aiassisted not found in $_target_path"
-        log_info "Run 'aiassisted install' to install"
-        exit 1
-    fi
-    
-    # Get local version
-    if [ ! -f "$_target_path/.aiassisted/.version" ]; then
-        log_warn "No version information found locally"
-        _local_hash="unknown"
+    # Python
+    if echo "$_available" | grep -q "python"; then
+        _uv_version=$(uv --version 2>/dev/null | cut -d' ' -f2)
+        if [ "$_preferred" = "python" ]; then
+            printf "  %s✓ python%s (detected: uv %s, active)\n" "$COLOR_GREEN" "$COLOR_RESET" "$_uv_version"
+        else
+            printf "  %s✓ python%s (detected: uv %s)\n" "$COLOR_GREEN" "$COLOR_RESET" "$_uv_version"
+        fi
     else
-        _local_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
+        printf "  %s✗ python%s (requires uv)\n" "$COLOR_RED" "$COLOR_RESET"
     fi
     
-    # Fetch remote version
-    if ! _remote_version_file=$(fetch_remote_version); then
-        log_error "Failed to fetch remote version information"
-        exit 1
-    fi
-    
-    _remote_hash=$(parse_version_file "$_remote_version_file" "COMMIT_HASH")
-    rm -f "$_remote_version_file"
-    
-    printf "\n%sCurrent version:%s %s\n" "$COLOR_BOLD" "$COLOR_RESET" "$_local_hash"
-    printf "%sLatest version: %s %s\n\n" "$COLOR_BOLD" "$COLOR_RESET" "$_remote_hash"
-    
-    if [ "$_local_hash" != "unknown" ] && compare_versions "$_local_hash" "$_remote_hash"; then
-        log_success "You are up-to-date!"
+    # Bun
+    if echo "$_available" | grep -q "bun"; then
+        _bun_version=$(bun --version 2>/dev/null)
+        if [ "$_preferred" = "bun" ]; then
+            printf "  %s✓ bun%s (detected: %s, active)\n" "$COLOR_GREEN" "$COLOR_RESET" "$_bun_version"
+        else
+            printf "  %s✓ bun%s (detected: %s)\n" "$COLOR_GREEN" "$COLOR_RESET" "$_bun_version"
+        fi
     else
-        log_warn "An update is available"
-        log_info "Run 'aiassisted update' to update to the latest version"
+        printf "  %s✗ bun%s (not installed)\n" "$COLOR_RED" "$COLOR_RESET"
     fi
+    
+    printf "\n"
 }
 
-cmd_version() {
-    printf "aiassisted version %s\n" "$VERSION"
-}
-
-cmd_self_update() {
-    log_info "Checking for CLI updates..."
+cmd_runtime_set() {
+    _new_runtime="$1"
     
-    _temp_script=$(mktemp)
-    
-    if ! download_file "${GITHUB_RAW_URL}/bin/aiassisted" "$_temp_script"; then
-        log_error "Failed to download latest version"
-        rm -f "$_temp_script"
+    if [ -z "$_new_runtime" ]; then
+        log_error "Runtime name required"
+        printf "Usage: aiassisted runtime set <shell|python|bun>\n"
         exit 1
     fi
     
-    # Get the path of the current script
-    _current_script=$(command -v aiassisted 2>/dev/null || echo "$0")
+    # Verify runtime exists
+    case "$_new_runtime" in
+        shell|python|bun)
+            ;;
+        *)
+            log_error "Unknown runtime: $_new_runtime"
+            printf "Valid runtimes: shell, python, bun\n"
+            exit 1
+            ;;
+    esac
     
-    # Make new script executable
-    chmod +x "$_temp_script"
-    
-    # Replace current script
-    if ! mv "$_temp_script" "$_current_script"; then
-        log_error "Failed to update script at $_current_script"
-        log_info "You may need to run with elevated permissions"
-        rm -f "$_temp_script"
+    # Verify runtime is available
+    if ! verify_runtime "$_new_runtime"; then
         exit 1
     fi
     
-    log_success "Successfully updated aiassisted CLI"
-    log_info "Restart your terminal or run 'hash -r' to use the new version"
+    # Create config directory
+    if [ ! -d "$CONFIG_DIR" ]; then
+        if ! mkdir -p "$CONFIG_DIR"; then
+            log_error "Failed to create config directory"
+            exit 1
+        fi
+    fi
+    
+    # Write config
+    echo "RUNTIME=$_new_runtime" > "$CONFIG_FILE"
+    
+    log_success "Set preferred runtime to: $_new_runtime"
+    log_info "Config saved to: $CONFIG_FILE"
 }
 
-cmd_help() {
-    cat <<'EOF'
-aiassisted - AI-Assisted Engineering Guidelines Installer
+cmd_runtime_info() {
+    _runtime=$(get_preferred_runtime "$@")
+    
+    printf "\n%s%sCurrent Runtime:%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+    printf "  Runtime: %s%s%s\n" "$COLOR_BOLD" "$_runtime" "$COLOR_RESET"
+    
+    case "$_runtime" in
+        python)
+            _uv_version=$(uv --version 2>/dev/null | cut -d' ' -f2)
+            printf "  Tool:    uv %s\n" "$_uv_version"
+            printf "  Command: uv run python -m aiassisted\n"
+            ;;
+        bun)
+            _bun_version=$(bun --version 2>/dev/null)
+            printf "  Tool:    bun %s\n" "$_bun_version"
+            printf "  Command: bun run src/index.ts\n"
+            ;;
+        shell)
+            printf "  Tool:    POSIX sh\n"
+            printf "  Command: sh src/shell/core.sh\n"
+            ;;
+    esac
+    
+    if [ -f "$CONFIG_FILE" ]; then
+        printf "  Config:  %s\n" "$CONFIG_FILE"
+    fi
+    
+    printf "\n"
+}
 
-Usage:
-  aiassisted <command> [options]
+###########################################
+# Runtime Delegation
+###########################################
 
-Commands:
-  install [--path=DIR]              Install .aiassisted to directory (default: current)
-  update [--force] [--path=DIR]     Update existing .aiassisted installation
-  check [--path=DIR]                Check if updates are available
-  version                           Show CLI version
-  self-update                       Update the aiassisted CLI itself
-  help                              Show this help message
-
-Options:
-  --path=DIR                        Target directory (default: current directory)
-  --force                           Skip confirmation prompts during update
-  --verbose                         Show detailed output
-  --quiet                           Show only errors
-
-Examples:
-  # Install to current directory
-  aiassisted install
-
-  # Install to specific project
-  aiassisted install --path=/path/to/project
-
-  # Check for updates
-  aiassisted check
-
-  # Update with confirmation
-  aiassisted update
-
-  # Force update without confirmation
-  aiassisted update --force
-
-  # Update CLI tool itself
-  aiassisted self-update
-
-For more information, visit:
-  https://github.com/rstlix0x0/aiassisted
-EOF
+delegate_to_runtime() {
+    _runtime="$1"
+    shift
+    
+    # Filter out --runtime flag from args before delegating
+    _filtered_args=""
+    for _arg in "$@"; do
+        case "$_arg" in
+            --runtime=*)
+                # Skip runtime flag
+                ;;
+            *)
+                _filtered_args="$_filtered_args $_arg"
+                ;;
+        esac
+    done
+    
+    case "$_runtime" in
+        shell)
+            # shellcheck disable=SC2086
+            exec sh "$SCRIPT_DIR/src/shell/core.sh" $_filtered_args
+            ;;
+        python)
+            # Use UV to run Python module
+            # shellcheck disable=SC2086
+            cd "$SCRIPT_DIR/src/python" && exec uv run python -m aiassisted $_filtered_args
+            ;;
+        bun)
+            # Use Bun to run TypeScript
+            # shellcheck disable=SC2086
+            cd "$SCRIPT_DIR/src/bun" && exec bun run src/index.ts $_filtered_args
+            ;;
+        *)
+            log_error "Unknown runtime: $_runtime"
+            exit 1
+            ;;
+    esac
 }
 
 ###########################################
@@ -774,48 +336,52 @@ EOF
 ###########################################
 
 main() {
-    # Parse global flags first
-    for _arg in "$@"; do
-        case "$_arg" in
-            --verbose)
-                VERBOSITY=2
-                ;;
-            --quiet)
-                VERBOSITY=0
-                ;;
-        esac
-    done
-    
     # Get command
     _command="${1:-help}"
-    shift || true
     
-    # Route to command
+    # Handle runtime-specific commands
     case "$_command" in
-        install)
-            cmd_install "$@"
-            ;;
-        update)
-            cmd_update "$@"
-            ;;
-        check)
-            cmd_check "$@"
-            ;;
-        version)
-            cmd_version
+        runtime)
+            _subcommand="${2:-info}"
+            shift 2 || shift 1 || true
+            
+            case "$_subcommand" in
+                list)
+                    cmd_runtime_list "$@"
+                    exit 0
+                    ;;
+                set)
+                    cmd_runtime_set "$@"
+                    exit 0
+                    ;;
+                info)
+                    cmd_runtime_info "$@"
+                    exit 0
+                    ;;
+                *)
+                    log_error "Unknown runtime subcommand: $_subcommand"
+                    printf "Valid subcommands: list, set, info\n"
+                    exit 1
+                    ;;
+            esac
             ;;
         self-update)
-            cmd_self_update
-            ;;
-        help|--help|-h)
-            cmd_help
-            ;;
-        *)
-            log_error "Unknown command: $_command"
-            printf "Run 'aiassisted help' for usage information\n"
-            exit 1
+            # Self-update is handled by shell only (updates this orchestrator)
+            exec sh "$SCRIPT_DIR/src/shell/core.sh" "$@"
             ;;
     esac
+    
+    # Get preferred runtime
+    _runtime=$(get_preferred_runtime "$@")
+    
+    # Verify runtime is available
+    if ! verify_runtime "$_runtime"; then
+        log_warn "Falling back to shell runtime"
+        _runtime="shell"
+    fi
+    
+    # Delegate to runtime
+    delegate_to_runtime "$_runtime" "$@"
 }
 
 # Run main function
