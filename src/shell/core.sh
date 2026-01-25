@@ -742,6 +742,416 @@ cmd_self_update() {
     log_info "Restart your terminal or run 'hash -r' to use the new version"
 }
 
+###########################################
+# Setup Skills Functions
+###########################################
+
+# Detect project root (git repository)
+detect_project_root() {
+    if ! _root=$(git rev-parse --show-toplevel 2>/dev/null); then
+        log_error "Not in a git repository"
+        log_info "setup-skills must be run from within a git repository"
+        return 1
+    fi
+    echo "$_root"
+}
+
+# Detect if opencode is installed
+detect_opencode() {
+    command -v opencode >/dev/null 2>&1
+}
+
+# Detect if claude is installed
+detect_claude() {
+    command -v claude >/dev/null 2>&1
+}
+
+# Generate Rust guidelines list
+generate_rust_guidelines_list() {
+    _project_root="$1"
+    _guidelines_dir="$_project_root/.aiassisted/guidelines/rust"
+    
+    if [ ! -d "$_guidelines_dir" ]; then
+        echo "No Rust guidelines found"
+        return 1
+    fi
+    
+    find "$_guidelines_dir" -maxdepth 1 -name "*.md" -type f | sort | while read -r _file; do
+        _basename=$(basename "$_file")
+        echo "- $_basename"
+    done
+}
+
+# Generate architecture guidelines list
+generate_arch_guidelines_list() {
+    _project_root="$1"
+    _guidelines_dir="$_project_root/.aiassisted/guidelines/architecture"
+    
+    if [ ! -d "$_guidelines_dir" ]; then
+        echo "No architecture guidelines found"
+        return 1
+    fi
+    
+    find "$_guidelines_dir" -maxdepth 1 -name "*.md" -type f | sort | while read -r _file; do
+        _basename=$(basename "$_file")
+        echo "- $_basename"
+    done
+}
+
+# Substitute template variables
+# Usage: substitute_template <template_file> <output_file> <project_root> <rust_list> <arch_list>
+substitute_template() {
+    _template="$1"
+    _output="$2"
+    _project_root="$3"
+    _rust_list="$4"
+    _arch_list="$5"
+    
+    # Read template and substitute variables
+    # This is POSIX-compliant sed - avoiding GNU-specific features
+    sed -e "s|{{PROJECT_ROOT}}|$_project_root|g" "$_template" | \
+    sed -e "/{{RUST_GUIDELINES_LIST}}/{
+r /dev/stdin
+d
+}" <<EOF | \
+sed -e "/{{ARCH_GUIDELINES_LIST}}/{
+r /dev/stdin
+d
+}" > "$_output"
+$_rust_list
+EOF
+}
+
+# Simplified template substitution (working version)
+substitute_template_simple() {
+    _template="$1"
+    _output="$2"
+    _project_root="$3"
+    _rust_list="$4"
+    _arch_list="$5"
+    
+    # Use a temporary file to build the output
+    _temp=$(mktemp)
+    
+    # Read template line by line and substitute
+    while IFS= read -r _line; do
+        case "$_line" in
+            *"{{PROJECT_ROOT}}"*)
+                _line=$(echo "$_line" | sed "s|{{PROJECT_ROOT}}|$_project_root|g")
+                ;;
+            *"{{RUST_GUIDELINES_LIST}}"*)
+                echo "$_rust_list"
+                continue
+                ;;
+            *"{{ARCH_GUIDELINES_LIST}}"*)
+                echo "$_arch_list"
+                continue
+                ;;
+        esac
+        echo "$_line"
+    done < "$_template" > "$_temp"
+    
+    mv "$_temp" "$_output"
+}
+
+# Setup OpenCode skills and agents
+setup_opencode_skills() {
+    _project_root="$1"
+    _templates_dir="$2"
+    _dry_run="$3"
+    
+    log_info "Setting up OpenCode skills and agents..."
+    
+    # Create .opencode directory if it doesn't exist
+    _opencode_dir="$_project_root/.opencode"
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        mkdir -p "$_opencode_dir/skills/git-commit"
+        mkdir -p "$_opencode_dir/skills/review-rust"
+        mkdir -p "$_opencode_dir/agents/ai-knowledge-rust"
+        mkdir -p "$_opencode_dir/agents/ai-knowledge-architecture"
+    fi
+    
+    # Generate guidelines lists
+    _rust_list=$(generate_rust_guidelines_list "$_project_root")
+    _arch_list=$(generate_arch_guidelines_list "$_project_root")
+    
+    # Setup git-commit skill
+    log_debug "Creating git-commit skill..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/skills/opencode/git-commit.SKILL.md.template" \
+            "$_opencode_dir/skills/git-commit/SKILL.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .opencode/skills/git-commit/SKILL.md"
+    fi
+    
+    # Setup review-rust skill
+    log_debug "Creating review-rust skill..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/skills/opencode/review-rust.SKILL.md.template" \
+            "$_opencode_dir/skills/review-rust/SKILL.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .opencode/skills/review-rust/SKILL.md"
+    fi
+    
+    # Setup ai-knowledge-rust agent
+    log_debug "Creating ai-knowledge-rust agent..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/agents/opencode/ai-knowledge-rust.AGENT.md.template" \
+            "$_opencode_dir/agents/ai-knowledge-rust/AGENT.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .opencode/agents/ai-knowledge-rust/AGENT.md"
+    fi
+    
+    # Setup ai-knowledge-architecture agent
+    log_debug "Creating ai-knowledge-architecture agent..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/agents/opencode/ai-knowledge-architecture.AGENT.md.template" \
+            "$_opencode_dir/agents/ai-knowledge-architecture/AGENT.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .opencode/agents/ai-knowledge-architecture/AGENT.md"
+    fi
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        log_success "OpenCode setup complete!"
+        log_info "Created skills: git-commit, review-rust"
+        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
+    fi
+}
+
+# Setup Claude Code skills
+setup_claude_skills() {
+    _project_root="$1"
+    _templates_dir="$2"
+    _dry_run="$3"
+    
+    log_info "Setting up Claude Code skills..."
+    
+    # Create .claude directory if it doesn't exist
+    _claude_dir="$_project_root/.claude"
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        mkdir -p "$_claude_dir/skills/git-commit"
+        mkdir -p "$_claude_dir/skills/review-rust"
+        mkdir -p "$_claude_dir/skills/rust-knowledge"
+        mkdir -p "$_claude_dir/skills/architecture-knowledge"
+    fi
+    
+    # Generate guidelines lists
+    _rust_list=$(generate_rust_guidelines_list "$_project_root")
+    _arch_list=$(generate_arch_guidelines_list "$_project_root")
+    
+    # Setup git-commit skill
+    log_debug "Creating git-commit skill..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/skills/claude/git-commit.SKILL.md.template" \
+            "$_claude_dir/skills/git-commit/SKILL.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .claude/skills/git-commit/SKILL.md"
+    fi
+    
+    # Setup review-rust skill
+    log_debug "Creating review-rust skill..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/skills/claude/review-rust.SKILL.md.template" \
+            "$_claude_dir/skills/review-rust/SKILL.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .claude/skills/review-rust/SKILL.md"
+    fi
+    
+    # Setup rust-knowledge skill
+    log_debug "Creating rust-knowledge skill..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/skills/claude/rust-knowledge.SKILL.md.template" \
+            "$_claude_dir/skills/rust-knowledge/SKILL.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .claude/skills/rust-knowledge/SKILL.md"
+    fi
+    
+    # Setup architecture-knowledge skill
+    log_debug "Creating architecture-knowledge skill..."
+    if [ "$_dry_run" -eq 0 ]; then
+        substitute_template_simple \
+            "$_templates_dir/skills/claude/architecture-knowledge.SKILL.md.template" \
+            "$_claude_dir/skills/architecture-knowledge/SKILL.md" \
+            "$_project_root" \
+            "$_rust_list" \
+            "$_arch_list"
+    else
+        echo "  Would create: .claude/skills/architecture-knowledge/SKILL.md"
+    fi
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        log_success "Claude Code setup complete!"
+        log_info "Created skills: git-commit, review-rust, rust-knowledge, architecture-knowledge"
+    fi
+}
+
+# Main setup-skills command
+cmd_setup_skills() {
+    _tool="auto"
+    _dry_run=0
+    
+    # Parse arguments
+    for _arg in "$@"; do
+        case "$_arg" in
+            --tool=*)
+                _tool="${_arg#*=}"
+                ;;
+            --dry-run)
+                _dry_run=1
+                ;;
+        esac
+    done
+    
+    # Detect project root
+    if ! _project_root=$(detect_project_root); then
+        exit 1
+    fi
+    
+    log_info "Project root: $_project_root"
+    
+    # Get script directory (where templates are located)
+    # We need to find where this script is running from
+    _script_path="$0"
+    if [ -L "$_script_path" ]; then
+        _script_path=$(readlink "$_script_path")
+    fi
+    _script_dir=$(cd "$(dirname "$_script_path")/../.." && pwd)
+    _templates_dir="$_script_dir/templates"
+    
+    if [ ! -d "$_templates_dir" ]; then
+        log_error "Templates directory not found: $_templates_dir"
+        log_info "This command must be run from an installed aiassisted CLI"
+        exit 1
+    fi
+    
+    log_debug "Templates directory: $_templates_dir"
+    
+    # Check .aiassisted directory exists
+    if [ ! -d "$_project_root/.aiassisted" ]; then
+        log_error ".aiassisted directory not found in project root"
+        log_info "Run 'aiassisted install' first to set up the project"
+        exit 1
+    fi
+    
+    # Detect available tools
+    _opencode_available=0
+    _claude_available=0
+    
+    if detect_opencode; then
+        _opencode_available=1
+        log_debug "OpenCode detected"
+    fi
+    
+    if detect_claude; then
+        _claude_available=1
+        log_debug "Claude Code detected"
+    fi
+    
+    # Check if any tools are available
+    if [ $_opencode_available -eq 0 ] && [ $_claude_available -eq 0 ]; then
+        log_warn "No AI coding tools detected"
+        log_info "Install OpenCode or Claude Code to use this feature"
+        log_info "  OpenCode: https://opencode.ai"
+        log_info "  Claude Code: https://code.claude.com"
+        exit 0
+    fi
+    
+    # Determine which tools to setup
+    _setup_opencode=0
+    _setup_claude=0
+    
+    case "$_tool" in
+        auto)
+            _setup_opencode=$_opencode_available
+            _setup_claude=$_claude_available
+            ;;
+        opencode)
+            if [ $_opencode_available -eq 0 ]; then
+                log_error "OpenCode not found"
+                log_info "Install OpenCode: https://opencode.ai"
+                exit 1
+            fi
+            _setup_opencode=1
+            ;;
+        claude)
+            if [ $_claude_available -eq 0 ]; then
+                log_error "Claude Code not found"
+                log_info "Install Claude Code: https://code.claude.com"
+                exit 1
+            fi
+            _setup_claude=1
+            ;;
+        *)
+            log_error "Unknown tool: $_tool"
+            log_info "Valid options: auto, opencode, claude"
+            exit 1
+            ;;
+    esac
+    
+    # Show what will be done
+    if [ $_dry_run -eq 1 ]; then
+        printf "\n%s%s[DRY RUN] The following would be created:%s\n\n" "$COLOR_BOLD" "$COLOR_YELLOW" "$COLOR_RESET"
+    fi
+    
+    # Setup OpenCode
+    if [ $_setup_opencode -eq 1 ]; then
+        setup_opencode_skills "$_project_root" "$_templates_dir" "$_dry_run"
+    fi
+    
+    # Setup Claude Code
+    if [ $_setup_claude -eq 1 ]; then
+        setup_claude_skills "$_project_root" "$_templates_dir" "$_dry_run"
+    fi
+    
+    if [ $_dry_run -eq 1 ]; then
+        printf "\n%sRun without --dry-run to create these files%s\n\n" "$COLOR_YELLOW" "$COLOR_RESET"
+    else
+        printf "\n%s%sSetup complete!%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+        
+        if [ $_setup_opencode -eq 1 ]; then
+            printf "OpenCode skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+            printf "OpenCode agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+        fi
+        
+        if [ $_setup_claude -eq 1 ]; then
+            printf "Claude skills: %s/git-commit%s, %s/review-rust%s, %s/rust-knowledge%s, %s/architecture-knowledge%s\n" \
+                "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+        fi
+        
+        printf "\n"
+    fi
+}
+
 cmd_help() {
     cat <<'EOF'
 aiassisted - AI-Assisted Engineering Guidelines Installer
@@ -753,6 +1163,7 @@ Commands:
   install [--path=DIR]              Install .aiassisted to directory (default: current)
   update [--force] [--path=DIR]     Update existing .aiassisted installation
   check [--path=DIR]                Check if updates are available
+  setup-skills [--tool=TOOL]        Setup AI agent skills (opencode, claude, or auto)
   version                           Show CLI version
   self-update                       Update the aiassisted CLI itself
   help                              Show this help message
@@ -760,6 +1171,8 @@ Commands:
 Options:
   --path=DIR                        Target directory (default: current directory)
   --force                           Skip confirmation prompts during update
+  --tool=TOOL                       AI tool to setup (opencode, claude, auto)
+  --dry-run                         Show what would be created without creating
   --verbose                         Show detailed output
   --quiet                           Show only errors
 
@@ -778,6 +1191,16 @@ Examples:
 
   # Force update without confirmation
   aiassisted update --force
+
+  # Setup AI agent skills (auto-detect tools)
+  aiassisted setup-skills
+
+  # Setup for specific tool
+  aiassisted setup-skills --tool=opencode
+  aiassisted setup-skills --tool=claude
+
+  # Preview what would be created
+  aiassisted setup-skills --dry-run
 
   # Update CLI tool itself
   aiassisted self-update
@@ -818,6 +1241,9 @@ main() {
             ;;
         check)
             cmd_check "$@"
+            ;;
+        setup-skills)
+            cmd_setup_skills "$@"
             ;;
         version)
             cmd_version

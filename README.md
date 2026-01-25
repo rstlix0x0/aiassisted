@@ -77,6 +77,28 @@ Update the `aiassisted` CLI tool itself:
 aiassisted self-update
 ```
 
+### Setup AI Agent Skills
+
+Create customized AI agent skills and agents for OpenCode and Claude Code:
+
+```bash
+# Auto-detect and setup for available tools
+aiassisted setup-skills
+
+# Setup for specific tool
+aiassisted setup-skills --tool=opencode
+aiassisted setup-skills --tool=claude
+
+# Preview what would be created
+aiassisted setup-skills --dry-run
+```
+
+This creates:
+- **OpenCode**: Skills (`git-commit`, `review-rust`) + Agents (`ai-knowledge-rust`, `ai-knowledge-architecture`)
+- **Claude Code**: Skills (`git-commit`, `review-rust`, `rust-knowledge`, `architecture-knowledge`)
+
+All skills reference `.aiassisted/` files directly, so updates propagate automatically without needing to sync.
+
 ### View Help
 
 Show all available commands:
@@ -91,6 +113,7 @@ aiassisted help
 | `install` | Install .aiassisted to directory | `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
 | `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
 | `check` | Check if updates available | `--path=DIR`, `--runtime=<shell\|python\|bun>` |
+| `setup-skills` | Setup AI agent skills | `--tool=<opencode\|claude\|auto>`, `--dry-run`, `--runtime=shell` |
 | `version` | Show CLI version | `--runtime=<shell\|python\|bun>` |
 | `self-update` | Update the CLI tool | - |
 | `runtime list` | Show available runtimes | - |

@@ -1,0 +1,70 @@
+---
+name: review-rust
+description: Review Rust code changes against project guidelines. Use when reviewing Rust code for quality, patterns, and best practices.
+disable-model-invocation: false
+context: inline
+---
+
+# Rust Code Review Skill
+
+Review Rust code changes against the project's comprehensive Rust guidelines and best practices.
+
+## Instructions
+
+### Step 1: Identify Changed Rust Files
+
+Run `git diff --name-only` to find which Rust files have changed.
+
+### Step 2: Discover Available Guidelines
+
+The Rust guidelines are located at: `{{PROJECT_ROOT}}/.aiassisted/guidelines/rust/`
+
+To see all available guidelines, use glob: `{{PROJECT_ROOT}}/.aiassisted/guidelines/rust/*.md`
+
+### Step 3: Load Relevant Guidelines
+
+Based on the code patterns you see, load the appropriate guidelines:
+
+| Code Pattern | Guideline File |
+|--------------|----------------|
+| Enums, structs, pattern matching | `rust-adt-implementation-guide.md` |
+| Builder pattern usage | `rust-builder-pattern-guide.md` |
+| Cargo.toml, dependencies | `rust-dependency-management-guide.md` |
+| Trait objects, generics | `rust-dispatch-guide.md` |
+| Factory pattern | `rust-factory-pattern-guide.md` |
+| Type-level state machines | `rust-typestate-pattern-guide.md` |
+| General Rust practices | `microsoft-rust-guidelines.md` |
+
+### Step 4: Review Code
+
+Read the changed files and compare against the loaded guidelines.
+
+### Step 5: Provide Feedback
+
+Format your review as:
+
+#### ✅ Strengths
+- What follows guidelines well
+
+#### ⚠️ Issues
+- File and line number
+- Guideline violated (cite specific guideline file)
+- Recommended fix
+
+#### 💡 Suggestions
+- Optional improvements
+
+## Guidelines Location
+
+**Path**: `{{PROJECT_ROOT}}/.aiassisted/guidelines/rust/`
+
+**Available as of skill creation**:
+{{RUST_GUIDELINES_LIST}}
+
+**Note**: This list may be outdated. Always use glob to discover current guidelines.
+
+## Important
+
+- Always load guidelines fresh from `.aiassisted/` - don't rely on cached knowledge
+- Cite specific guideline files and sections in your feedback
+- The guidelines are the source of truth
