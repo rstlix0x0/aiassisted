@@ -197,6 +197,14 @@ install_cli() {
         exit 1
     fi
     
+    # Detect if running from a git repository (development mode)
+    _installer_dir="$(cd "$(dirname "$0")" && pwd)"
+    _is_dev_mode=false
+    if [ -d "$_installer_dir/.git" ]; then
+        log_info "Development mode detected (running from git repository)"
+        _is_dev_mode=true
+    fi
+    
     # Remove existing installation if present
     if [ -d "$SOURCE_DIR" ]; then
         log_warn "Existing installation found at $SOURCE_DIR"
@@ -204,14 +212,39 @@ install_cli() {
         rm -rf "$SOURCE_DIR"
     fi
     
-    # Clone repository
-    log_info "Cloning repository from $GITHUB_REPO..."
-    if ! git clone --depth 1 "$GITHUB_URL" "$SOURCE_DIR"; then
-        log_error "Failed to clone repository"
-        exit 1
+    # Clone or copy repository
+    if [ "$_is_dev_mode" = true ]; then
+        # Development: copy local repository (preserves uncommitted changes)
+        log_info "Copying local repository for development..."
+        mkdir -p "$(dirname "$SOURCE_DIR")"
+        
+        # Use rsync if available (faster, can exclude), otherwise cp with manual cleanup
+        if command -v rsync >/dev/null 2>&1; then
+            if ! rsync -a --exclude='.venv' --exclude='node_modules' --exclude='*.pyc' \
+                "$_installer_dir/" "$SOURCE_DIR/"; then
+                log_error "Failed to copy local repository"
+                exit 1
+            fi
+        else
+            if ! cp -r "$_installer_dir" "$SOURCE_DIR"; then
+                log_error "Failed to copy local repository"
+                exit 1
+            fi
+            # Clean up build artifacts
+            rm -rf "$SOURCE_DIR/.venv" "$SOURCE_DIR/node_modules" 2>/dev/null || true
+            find "$SOURCE_DIR" -name "*.pyc" -delete 2>/dev/null || true
+        fi
+        
+        log_success "Copied local repository to $SOURCE_DIR"
+    else
+        # Production: clone from GitHub
+        log_info "Cloning repository from $GITHUB_REPO..."
+        if ! git clone --depth 1 "$GITHUB_URL" "$SOURCE_DIR"; then
+            log_error "Failed to clone repository"
+            exit 1
+        fi
+        log_success "Cloned repository to $SOURCE_DIR"
     fi
-    
-    log_success "Cloned repository to $SOURCE_DIR"
     
     # Create symlink to CLI
     log_info "Creating symlink to $CLI_PATH..."

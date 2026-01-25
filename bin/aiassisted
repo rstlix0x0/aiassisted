@@ -36,6 +36,9 @@ else
     SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 fi
 
+# Export SCRIPT_DIR so runtime backends can access it
+export SCRIPT_DIR
+
 # Config file location (centralized in ~/.aiassisted)
 CONFIG_DIR="$HOME/.aiassisted"
 CONFIG_FILE="$CONFIG_DIR/config"
