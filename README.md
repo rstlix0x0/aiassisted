@@ -95,9 +95,13 @@ cd ~/.aiassisted/source/aiassisted
 git log --oneline -10
 ```
 
-### Setup AI Agent Skills
+### Setup AI Skills and Agents
 
-Create customized AI agent skills and agents for OpenCode and Claude Code:
+Create customized AI skills (slash commands) and agents (custom subagents) for OpenCode and Claude Code.
+
+#### Setup Skills (Slash Commands)
+
+Create reusable slash commands like `/git-commit` and `/review-rust`:
 
 ```bash
 # Auto-detect and setup for available tools
@@ -112,10 +116,30 @@ aiassisted setup-skills --dry-run
 ```
 
 This creates:
-- **OpenCode**: Skills (`git-commit`, `review-rust`) + Agents (`ai-knowledge-rust`, `ai-knowledge-architecture`)
-- **Claude Code**: Skills (`git-commit`, `review-rust`) + Subagents (`ai-knowledge-rust`, `ai-knowledge-architecture`)
+- **OpenCode**: `.opencode/skills/git-commit/`, `.opencode/skills/review-rust/`
+- **Claude Code**: `.claude/skills/git-commit/`, `.claude/skills/review-rust/`
 
-All skills and agents reference `.aiassisted/` files directly, so updates propagate automatically without needing to sync.
+#### Setup Agents (Custom Subagents)
+
+Create specialized AI agents with project-specific knowledge:
+
+```bash
+# Auto-detect and setup for available tools
+aiassisted setup-agents
+
+# Setup for specific tool
+aiassisted setup-agents --tool=opencode
+aiassisted setup-agents --tool=claude
+
+# Preview what would be created
+aiassisted setup-agents --dry-run
+```
+
+This creates:
+- **OpenCode**: `.opencode/agents/ai-knowledge-rust/`, `.opencode/agents/ai-knowledge-architecture/`
+- **Claude Code**: `.claude/agents/ai-knowledge-rust/`, `.claude/agents/ai-knowledge-architecture/`
+
+**Note:** All skills and agents reference `.aiassisted/` files directly, so updates propagate automatically without needing to sync.
 
 ### Configuration Management
 
@@ -155,7 +179,8 @@ prefer_project = true       # Use ./.aiassisted/templates/ over global
 
 [skills]
 tools = []                  # AI tools to setup (empty = auto-detect)
-auto_setup = false          # Auto-run setup-skills after install
+auto_setup_skills = false   # Auto-run setup-skills after install
+auto_setup_agents = false   # Auto-run setup-agents after install
 
 [github]
 repo = "rstlix0x0/aiassisted"  # Source repository
@@ -183,8 +208,9 @@ aiassisted templates list
 # Edit templates
 vim .aiassisted/templates/skills/opencode/git-commit.SKILL.md.template
 
-# Regenerate skills with custom templates
+# Regenerate skills and agents with custom templates
 aiassisted setup-skills
+aiassisted setup-agents
 
 # Commit custom templates to share with team
 git add .aiassisted/templates/
@@ -216,7 +242,8 @@ aiassisted help
 | `install` | Install .aiassisted to directory | `--path=DIR`, `--verbose`, `--quiet` |
 | `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet` |
 | `check` | Check if updates available | `--path=DIR` |
-| `setup-skills` | Setup AI agent skills | `--tool=<opencode\|claude\|auto>`, `--dry-run` |
+| `setup-skills` | Setup AI skills (slash commands) | `--tool=<opencode\|claude\|auto>`, `--dry-run` |
+| `setup-agents` | Setup AI agents (custom subagents) | `--tool=<opencode\|claude\|auto>`, `--dry-run` |
 | `templates <subcommand>` | Manage templates | `list`, `show <path>`, `init`, `sync`, `diff`, `path` |
 | `config <subcommand>` | Manage configuration | `show`, `get <key>`, `edit`, `reset`, `path` |
 | `version` | Show CLI version | - |
