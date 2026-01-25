@@ -2,8 +2,11 @@
 #
 # aiassisted installer
 #
-# This script installs the aiassisted CLI tool and immediately installs
-# the .aiassisted directory to your current directory.
+# This script installs the aiassisted CLI tool by cloning the repository
+# to ~/.aiassisted/source/aiassisted and creating a symlink to ~/.local/bin.
+#
+# Requirements:
+#   - git
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/rstlix0x0/aiassisted/main/install.sh | sh
@@ -13,11 +16,13 @@ set -e
 
 # GitHub repository
 GITHUB_REPO="rstlix0x0/aiassisted"
-GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
+GITHUB_URL="https://github.com/${GITHUB_REPO}.git"
 
-# Installation directory
-INSTALL_DIR="$HOME/.local/bin"
-CLI_PATH="$INSTALL_DIR/aiassisted"
+# Installation directories
+AIASSISTED_HOME="$HOME/.aiassisted"
+SOURCE_DIR="$AIASSISTED_HOME/source/aiassisted"
+BIN_DIR="$HOME/.local/bin"
+CLI_PATH="$BIN_DIR/aiassisted"
 
 # Color support detection
 if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
@@ -63,39 +68,6 @@ log_warn() {
 ###########################################
 # Utility Functions
 ###########################################
-
-# Detect download tool (curl or wget)
-detect_download_tool() {
-    if command -v curl >/dev/null 2>&1; then
-        echo "curl"
-    elif command -v wget >/dev/null 2>&1; then
-        echo "wget"
-    else
-        log_error "Neither curl nor wget found. Please install one of them."
-        exit 1
-    fi
-}
-
-# Download file
-download_file() {
-    _url="$1"
-    _output="$2"
-    _tool=$(detect_download_tool)
-    
-    if [ "$_tool" = "curl" ]; then
-        if ! curl -fsSL "$_url" -o "$_output"; then
-            log_error "Failed to download $_url"
-            return 1
-        fi
-    else
-        if ! wget -q "$_url" -O "$_output"; then
-            log_error "Failed to download $_url"
-            return 1
-        fi
-    fi
-    
-    return 0
-}
 
 # Detect user's shell
 detect_shell() {
@@ -190,183 +162,103 @@ add_to_path() {
 }
 
 ###########################################
+# Prerequisite Checks
+###########################################
+
+check_prerequisites() {
+    log_info "Checking prerequisites..."
+    
+    # Check git
+    if ! command -v git >/dev/null 2>&1; then
+        log_error "git is required but not found"
+        printf "\n%sPlease install git first:%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  macOS:   %sxcode-select --install%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Ubuntu:  %ssudo apt install git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Debian:  %ssudo apt install git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Fedora:  %ssudo dnf install git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Arch:    %ssudo pacman -S git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Alpine:  %ssudo apk add git%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
+        exit 1
+    fi
+    
+    log_success "git found: $(git --version)"
+}
+
+###########################################
 # Installation Functions
 ###########################################
 
 install_cli() {
-    log_info "Installing aiassisted CLI to $CLI_PATH"
+    log_info "Installing aiassisted to $AIASSISTED_HOME"
     
-    # Create install directories for all runtimes
-    _data_dir="$HOME/.local/share/aiassisted"
-    _shell_dir="$_data_dir/src/shell"
-    _python_dir="$_data_dir/src/python"
-    _bun_dir="$_data_dir/src/bun"
-    
-    if ! mkdir -p "$INSTALL_DIR" "$_data_dir" "$_shell_dir" "$_python_dir" "$_bun_dir"; then
+    # Create necessary directories
+    if ! mkdir -p "$AIASSISTED_HOME" "$BIN_DIR"; then
         log_error "Failed to create installation directories"
         exit 1
     fi
     
-    # Download CLI orchestrator
-    _temp_cli=$(mktemp)
+    # Remove existing installation if present
+    if [ -d "$SOURCE_DIR" ]; then
+        log_warn "Existing installation found at $SOURCE_DIR"
+        log_info "Removing old installation..."
+        rm -rf "$SOURCE_DIR"
+    fi
     
-    log_info "Downloading aiassisted CLI..."
-    if ! download_file "${GITHUB_RAW_URL}/bin/aiassisted" "$_temp_cli"; then
-        log_error "Failed to download CLI script"
-        rm -f "$_temp_cli"
+    # Clone repository
+    log_info "Cloning repository from $GITHUB_REPO..."
+    if ! git clone --depth 1 "$GITHUB_URL" "$SOURCE_DIR"; then
+        log_error "Failed to clone repository"
         exit 1
     fi
     
-    # Make executable
-    chmod +x "$_temp_cli"
+    log_success "Cloned repository to $SOURCE_DIR"
     
-    # Move to installation directory
-    if ! mv "$_temp_cli" "$CLI_PATH"; then
-        log_error "Failed to install CLI to $CLI_PATH"
-        rm -f "$_temp_cli"
+    # Create symlink to CLI
+    log_info "Creating symlink to $CLI_PATH..."
+    if [ -L "$CLI_PATH" ] || [ -f "$CLI_PATH" ]; then
+        rm -f "$CLI_PATH"
+    fi
+    
+    if ! ln -sf "$SOURCE_DIR/bin/aiassisted" "$CLI_PATH"; then
+        log_error "Failed to create symlink"
         exit 1
     fi
     
-    # Download shell runtime
-    _temp_runtime=$(mktemp)
-    log_info "Downloading shell runtime..."
-    if ! download_file "${GITHUB_RAW_URL}/src/shell/core.sh" "$_temp_runtime"; then
-        log_error "Failed to download shell runtime"
-        rm -f "$_temp_runtime"
-        exit 1
-    fi
-    
-    # Make executable and move to runtime directory
-    chmod +x "$_temp_runtime"
-    if ! mv "$_temp_runtime" "$_shell_dir/core.sh"; then
-        log_error "Failed to install shell runtime"
-        rm -f "$_temp_runtime"
-        exit 1
-    fi
-    
-    # Download README.md for Python runtime (required by pyproject.toml)
-    _temp_readme=$(mktemp)
-    if download_file "${GITHUB_RAW_URL}/README.md" "$_temp_readme"; then
-        mv "$_temp_readme" "$_data_dir/README.md"
-    else
-        log_warn "Failed to download README.md (needed for Python runtime)"
-        rm -f "$_temp_readme"
-    fi
-    
-    # Download Python runtime files
-    log_info "Downloading Python runtime backend..."
-    _python_files_ok=true
-    
-    # Python config and source directory
-    mkdir -p "$_python_dir/aiassisted"
-    
-    # Download pyproject.toml
-    _temp=$(mktemp)
-    if download_file "${GITHUB_RAW_URL}/src/python/pyproject.toml" "$_temp"; then
-        mv "$_temp" "$_python_dir/pyproject.toml"
-    else
-        log_warn "Failed to download pyproject.toml"
-        rm -f "$_temp"
-        _python_files_ok=false
-    fi
-    
-    # Python source files
-    for _file in __init__.py __main__.py cli.py downloader.py installer.py manifest.py; do
-        _temp=$(mktemp)
-        if download_file "${GITHUB_RAW_URL}/src/python/aiassisted/$_file" "$_temp"; then
-            mv "$_temp" "$_python_dir/aiassisted/$_file"
-        else
-            log_warn "Failed to download aiassisted/$_file"
-            rm -f "$_temp"
-            _python_files_ok=false
-        fi
-    done
-    
-    if [ "$_python_files_ok" = true ]; then
-        log_success "Installed Python runtime backend"
-    else
-        log_warn "Python runtime partially installed (some files missing)"
-    fi
-    
-    # Download Bun runtime files
-    log_info "Downloading Bun runtime backend..."
-    _bun_files_ok=true
-    
-    # Bun config and source directory
-    mkdir -p "$_bun_dir/src"
-    
-    # Download config files (tsconfig.json is optional)
-    _temp=$(mktemp)
-    if download_file "${GITHUB_RAW_URL}/src/bun/package.json" "$_temp"; then
-        mv "$_temp" "$_bun_dir/package.json"
-    else
-        log_warn "Failed to download package.json"
-        rm -f "$_temp"
-        _bun_files_ok=false
-    fi
-    
-    _temp=$(mktemp)
-    if download_file "${GITHUB_RAW_URL}/src/bun/tsconfig.json" "$_temp"; then
-        mv "$_temp" "$_bun_dir/tsconfig.json"
-    else
-        # tsconfig.json is optional, don't mark as failure
-        rm -f "$_temp"
-    fi
-    
-    # Bun source files
-    for _file in index.ts cli.ts downloader.ts installer.ts manifest.ts; do
-        _temp=$(mktemp)
-        if download_file "${GITHUB_RAW_URL}/src/bun/src/$_file" "$_temp"; then
-            mv "$_temp" "$_bun_dir/src/$_file"
-        else
-            log_warn "Failed to download src/$_file"
-            rm -f "$_temp"
-            _bun_files_ok=false
-        fi
-    done
-    
-    if [ "$_bun_files_ok" = true ]; then
-        log_success "Installed Bun runtime backend"
-    else
-        log_warn "Bun runtime partially installed (some files missing)"
-    fi
-    
-    log_success "Installed aiassisted CLI to $CLI_PATH"
+    log_success "Created symlink: $CLI_PATH -> $SOURCE_DIR/bin/aiassisted"
     
     # Check if in PATH
-    if ! is_in_path "$INSTALL_DIR"; then
-        log_warn "$INSTALL_DIR is not in your PATH"
-        add_to_path "$INSTALL_DIR"
+    if ! is_in_path "$BIN_DIR"; then
+        log_warn "$BIN_DIR is not in your PATH"
+        add_to_path "$BIN_DIR"
     else
-        log_success "$INSTALL_DIR is already in your PATH"
+        log_success "$BIN_DIR is already in your PATH"
     fi
 }
 
 setup_global_config() {
-    _config_dir="$HOME/.aiassisted"
-    _config_file="$_config_dir/config.toml"
-    _templates_dir="$_config_dir/templates"
-    _data_dir="$HOME/.local/share/aiassisted/.aiassisted"
+    _config_file="$AIASSISTED_HOME/config.toml"
+    _templates_dir="$AIASSISTED_HOME/templates"
+    _cache_dir="$AIASSISTED_HOME/cache"
+    _state_dir="$AIASSISTED_HOME/state"
     
-    log_info "Setting up global configuration directory at $_config_dir"
+    log_info "Setting up global configuration directory"
     
     # Create directories
-    if ! mkdir -p "$_config_dir" "$_templates_dir" "$_config_dir/cache" "$_config_dir/state"; then
-        log_error "Failed to create global configuration directory"
+    if ! mkdir -p "$_templates_dir" "$_cache_dir" "$_state_dir"; then
+        log_error "Failed to create configuration directories"
         exit 1
     fi
     
-    # Download default config.toml if not exists
+    # Create default config.toml if not exists
     if [ ! -f "$_config_file" ]; then
         log_info "Creating default configuration file..."
-        _temp_config=$(mktemp)
         
-        if download_file "${GITHUB_RAW_URL}/.aiassisted/config.toml.default" "$_temp_config"; then
-            mv "$_temp_config" "$_config_file"
+        # Check if default config exists in source
+        _default_config="$SOURCE_DIR/.aiassisted/config.toml.default"
+        if [ -f "$_default_config" ]; then
+            cp "$_default_config" "$_config_file"
             log_success "Created configuration file: $_config_file"
         else
-            log_warn "Failed to download config template, creating minimal config"
-            rm -f "$_temp_config"
             # Create minimal config as fallback
             cat > "$_config_file" << 'EOF'
 # aiassisted CLI Configuration
@@ -389,27 +281,6 @@ EOF
     log_success "Global configuration setup complete"
 }
 
-sync_global_templates() {
-    _data_dir="$HOME/.local/share/aiassisted/.aiassisted"
-    _templates_src="$_data_dir/templates"
-    _templates_dst="$HOME/.aiassisted/templates"
-    
-    # Check if templates source exists (from aiassisted install)
-    if [ ! -d "$_templates_src" ]; then
-        log_info "Templates will be available after first 'aiassisted install'"
-        return 0
-    fi
-    
-    log_info "Syncing templates to global directory..."
-    
-    # Copy templates to global directory
-    if cp -r "$_templates_src"/* "$_templates_dst/"; then
-        log_success "Templates synced to $_templates_dst"
-    else
-        log_warn "Failed to sync templates (this is OK for first install)"
-    fi
-}
-
 install_aiassisted_dir() {
     log_info "Installing .aiassisted directory to current directory"
     
@@ -418,9 +289,6 @@ install_aiassisted_dir() {
         log_error "Failed to install .aiassisted directory"
         exit 1
     fi
-    
-    # After install, sync templates to global directory
-    sync_global_templates
 }
 
 ###########################################
@@ -429,6 +297,11 @@ install_aiassisted_dir() {
 
 main() {
     printf "\n%s%saiassisted Installer%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+    
+    # Check prerequisites
+    check_prerequisites
+    
+    printf "\n"
     
     # Install CLI
     install_cli
@@ -440,7 +313,7 @@ main() {
     
     printf "\n"
     
-    # Install .aiassisted directory
+    # Install .aiassisted directory to current directory
     install_aiassisted_dir
     
     printf "\n"
@@ -450,7 +323,11 @@ main() {
     printf "  1. Restart your terminal or run: %ssource %s%s\n" "$COLOR_BOLD" "$(get_shell_rc_file)" "$COLOR_RESET"
     printf "  2. Use %saiassisted help%s to see all available commands\n" "$COLOR_BOLD" "$COLOR_RESET"
     printf "  3. Run %saiassisted setup-skills%s to setup AI coding tools\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  4. Edit config: %saiassisted config edit%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  4. Edit config: %saiassisted config edit%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "\n%s%sInstalled to:%s\n" "$COLOR_BOLD" "$COLOR_BLUE" "$COLOR_RESET"
+    printf "  Source:  %s\n" "$SOURCE_DIR"
+    printf "  Config:  %s\n" "$AIASSISTED_HOME"
+    printf "  CLI:     %s\n\n" "$CLI_PATH"
 }
 
 # Run main function

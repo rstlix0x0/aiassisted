@@ -797,32 +797,41 @@ cmd_version() {
 }
 
 cmd_self_update() {
-    log_info "Checking for CLI updates..."
+    log_info "Updating aiassisted..."
     
-    _temp_script=$(mktemp)
-    
-    if ! download_file "${GITHUB_RAW_URL}/bin/aiassisted" "$_temp_script"; then
-        log_error "Failed to download latest version"
-        rm -f "$_temp_script"
+    # Detect if we're in a git repository
+    if [ ! -d "$SCRIPT_DIR/.git" ]; then
+        log_error "Git repository not found at $SCRIPT_DIR"
+        log_info "It looks like the installation was modified or corrupted"
+        log_info "To restore, run:"
+        log_info "  rm -rf ~/.aiassisted/source/aiassisted"
+        log_info "  curl -fsSL https://raw.githubusercontent.com/rstlix0x0/aiassisted/main/install.sh | sh"
         exit 1
     fi
     
-    # Get the path of the current script
-    _current_script=$(command -v aiassisted 2>/dev/null || echo "$0")
+    # Get current commit hash
+    _current_hash=$(cd "$SCRIPT_DIR" && git rev-parse --short HEAD)
+    log_info "Current version: $_current_hash"
     
-    # Make new script executable
-    chmod +x "$_temp_script"
-    
-    # Replace current script
-    if ! mv "$_temp_script" "$_current_script"; then
-        log_error "Failed to update script at $_current_script"
-        log_info "You may need to run with elevated permissions"
-        rm -f "$_temp_script"
+    # Pull latest changes
+    log_info "Fetching updates from repository..."
+    if ! (cd "$SCRIPT_DIR" && git pull); then
+        log_error "Failed to update from repository"
+        log_info "You may need to resolve conflicts or check your network connection"
         exit 1
     fi
     
-    log_success "Successfully updated aiassisted CLI"
-    log_info "Restart your terminal or run 'hash -r' to use the new version"
+    # Get new commit hash
+    _new_hash=$(cd "$SCRIPT_DIR" && git rev-parse --short HEAD)
+    
+    if [ "$_current_hash" = "$_new_hash" ]; then
+        log_success "Already up to date ($_current_hash)"
+    else
+        log_success "Updated: $_current_hash -> $_new_hash"
+        log_info "View changes: cd $SCRIPT_DIR && git log --oneline $_current_hash..$_new_hash"
+    fi
+    
+    log_info "Restart your terminal or run 'hash -r' to reload the CLI"
 }
 
 ###########################################
