@@ -597,9 +597,10 @@ cmd_install() {
     
     # Show next steps
     printf "\n%s%sNext Steps:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
-    printf "  1. Customize AI behavior: %saiassisted setup-skills%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  2. Update content: %saiassisted update%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  3. View all commands: %saiassisted help%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  1. Setup skills: %saiassisted setup-skills%s (slash commands)\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  2. Setup agents: %saiassisted setup-agents%s (custom AI agents)\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  3. Update content: %saiassisted update%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  4. View all commands: %saiassisted help%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
 }
 
 cmd_update() {
@@ -842,7 +843,7 @@ cmd_self_update() {
 detect_project_root() {
     if ! _root=$(git rev-parse --show-toplevel 2>/dev/null); then
         log_error "Not in a git repository"
-        log_info "setup-skills must be run from within a git repository"
+        log_info "setup-skills and setup-agents must be run from within a git repository"
         return 1
     fi
     echo "$_root"
@@ -981,12 +982,12 @@ substitute_template_simple() {
     mv "$_temp" "$_output"
 }
 
-# Setup OpenCode skills and agents
-setup_opencode_skills() {
+# Setup OpenCode skills only (slash commands)
+setup_opencode_skills_only() {
     _project_root="$1"
     _dry_run="$2"
     
-    log_info "Setting up OpenCode skills and agents..."
+    log_info "Setting up OpenCode skills..."
     
     # Create .opencode directory if it doesn't exist
     _opencode_dir="$_project_root/.opencode"
@@ -994,8 +995,6 @@ setup_opencode_skills() {
     if [ "$_dry_run" -eq 0 ]; then
         mkdir -p "$_opencode_dir/skills/git-commit"
         mkdir -p "$_opencode_dir/skills/review-rust"
-        mkdir -p "$_opencode_dir/agents/ai-knowledge-rust"
-        mkdir -p "$_opencode_dir/agents/ai-knowledge-architecture"
     fi
     
     # Generate guidelines lists
@@ -1038,55 +1037,18 @@ setup_opencode_skills() {
         log_warn "Skipping review-rust skill (template not found)"
     fi
     
-    # Setup ai-knowledge-rust agent
-    log_debug "Creating ai-knowledge-rust agent..."
-    if _template_path=$(find_template "agents/opencode/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
-        if [ "$_dry_run" -eq 0 ]; then
-            substitute_template_simple \
-                "$_template_path" \
-                "$_opencode_dir/agents/ai-knowledge-rust/AGENT.md" \
-                "$_project_root" \
-                "$_rust_list" \
-                "$_arch_list"
-        else
-            echo "  Would create: .opencode/agents/ai-knowledge-rust/AGENT.md"
-            echo "    from: $_template_path"
-        fi
-    else
-        log_warn "Skipping ai-knowledge-rust agent (template not found)"
-    fi
-    
-    # Setup ai-knowledge-architecture agent
-    log_debug "Creating ai-knowledge-architecture agent..."
-    if _template_path=$(find_template "agents/opencode/ai-knowledge-architecture.AGENT.md.template" "$_project_root"); then
-        if [ "$_dry_run" -eq 0 ]; then
-            substitute_template_simple \
-                "$_template_path" \
-                "$_opencode_dir/agents/ai-knowledge-architecture/AGENT.md" \
-                "$_project_root" \
-                "$_rust_list" \
-                "$_arch_list"
-        else
-            echo "  Would create: .opencode/agents/ai-knowledge-architecture/AGENT.md"
-            echo "    from: $_template_path"
-        fi
-    else
-        log_warn "Skipping ai-knowledge-architecture agent (template not found)"
-    fi
-    
     if [ "$_dry_run" -eq 0 ]; then
-        log_success "OpenCode setup complete!"
+        log_success "OpenCode skills setup complete!"
         log_info "Created skills: git-commit, review-rust"
-        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
     fi
 }
 
-# Setup Claude Code skills and agents
-setup_claude_skills() {
+# Setup Claude Code skills only (slash commands)
+setup_claude_skills_only() {
     _project_root="$1"
     _dry_run="$2"
     
-    log_info "Setting up Claude Code skills and agents..."
+    log_info "Setting up Claude Code skills..."
     
     # Create .claude directory if it doesn't exist
     _claude_dir="$_project_root/.claude"
@@ -1094,8 +1056,6 @@ setup_claude_skills() {
     if [ "$_dry_run" -eq 0 ]; then
         mkdir -p "$_claude_dir/skills/git-commit"
         mkdir -p "$_claude_dir/skills/review-rust"
-        mkdir -p "$_claude_dir/agents/ai-knowledge-rust"
-        mkdir -p "$_claude_dir/agents/ai-knowledge-architecture"
     fi
     
     # Generate guidelines lists
@@ -1138,6 +1098,92 @@ setup_claude_skills() {
         log_warn "Skipping review-rust skill (template not found)"
     fi
     
+    if [ "$_dry_run" -eq 0 ]; then
+        log_success "Claude Code skills setup complete!"
+        log_info "Created skills: git-commit, review-rust"
+    fi
+}
+
+# Setup OpenCode agents only (custom subagents)
+setup_opencode_agents_only() {
+    _project_root="$1"
+    _dry_run="$2"
+    
+    log_info "Setting up OpenCode agents..."
+    
+    # Create .opencode directory if it doesn't exist
+    _opencode_dir="$_project_root/.opencode"
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        mkdir -p "$_opencode_dir/agents/ai-knowledge-rust"
+        mkdir -p "$_opencode_dir/agents/ai-knowledge-architecture"
+    fi
+    
+    # Generate guidelines lists
+    _rust_list=$(generate_rust_guidelines_list "$_project_root")
+    _arch_list=$(generate_arch_guidelines_list "$_project_root")
+    
+    # Setup ai-knowledge-rust agent
+    log_debug "Creating ai-knowledge-rust agent..."
+    if _template_path=$(find_template "agents/opencode/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/agents/ai-knowledge-rust/AGENT.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/agents/ai-knowledge-rust/AGENT.md"
+            echo "    from: $_template_path"
+        fi
+    else
+        log_warn "Skipping ai-knowledge-rust agent (template not found)"
+    fi
+    
+    # Setup ai-knowledge-architecture agent
+    log_debug "Creating ai-knowledge-architecture agent..."
+    if _template_path=$(find_template "agents/opencode/ai-knowledge-architecture.AGENT.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/agents/ai-knowledge-architecture/AGENT.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/agents/ai-knowledge-architecture/AGENT.md"
+            echo "    from: $_template_path"
+        fi
+    else
+        log_warn "Skipping ai-knowledge-architecture agent (template not found)"
+    fi
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        log_success "OpenCode agents setup complete!"
+        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
+    fi
+}
+
+# Setup Claude Code agents only (custom subagents)
+setup_claude_agents_only() {
+    _project_root="$1"
+    _dry_run="$2"
+    
+    log_info "Setting up Claude Code agents..."
+    
+    # Create .claude directory if it doesn't exist
+    _claude_dir="$_project_root/.claude"
+    
+    if [ "$_dry_run" -eq 0 ]; then
+        mkdir -p "$_claude_dir/agents/ai-knowledge-rust"
+        mkdir -p "$_claude_dir/agents/ai-knowledge-architecture"
+    fi
+    
+    # Generate guidelines lists
+    _rust_list=$(generate_rust_guidelines_list "$_project_root")
+    _arch_list=$(generate_arch_guidelines_list "$_project_root")
+    
     # Setup ai-knowledge-rust agent
     log_debug "Creating ai-knowledge-rust agent..."
     if _template_path=$(find_template "agents/claude/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
@@ -1175,32 +1221,18 @@ setup_claude_skills() {
     fi
     
     if [ "$_dry_run" -eq 0 ]; then
-        log_success "Claude Code setup complete!"
-        log_info "Created skills: git-commit, review-rust"
+        log_success "Claude Code agents setup complete!"
         log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
     fi
 }
 
-# Main setup-skills command
-cmd_setup_skills() {
-    _tool="auto"
-    _dry_run=0
-    
-    # Parse arguments
-    for _arg in "$@"; do
-        case "$_arg" in
-            --tool=*)
-                _tool="${_arg#*=}"
-                ;;
-            --dry-run)
-                _dry_run=1
-                ;;
-        esac
-    done
+# Shared setup preparation logic
+prepare_setup() {
+    _tool="$1"
     
     # Detect project root
     if ! _project_root=$(detect_project_root); then
-        exit 1
+        return 1
     fi
     
     log_info "Project root: $_project_root"
@@ -1209,7 +1241,7 @@ cmd_setup_skills() {
     if [ ! -d "$_project_root/.aiassisted" ]; then
         log_error ".aiassisted directory not found in project root"
         log_info "Run 'aiassisted install' first to set up the project"
-        exit 1
+        return 1
     fi
     
     # Verify at least one template source exists (project or global)
@@ -1224,7 +1256,7 @@ cmd_setup_skills() {
         log_error "  - $_project_root/.aiassisted/templates/ (project)"
         log_error "  - $HOME/.aiassisted/templates/ (global)"
         log_info "Run the installer again to download templates"
-        exit 1
+        return 1
     fi
     
     # Detect available tools
@@ -1247,7 +1279,7 @@ cmd_setup_skills() {
         log_info "Install OpenCode or Claude Code to use this feature"
         log_info "  OpenCode: https://opencode.ai"
         log_info "  Claude Code: https://code.claude.com"
-        exit 0
+        return 1
     fi
     
     # Determine which tools to setup
@@ -1263,7 +1295,7 @@ cmd_setup_skills() {
             if [ $_opencode_available -eq 0 ]; then
                 log_error "OpenCode not found"
                 log_info "Install OpenCode: https://opencode.ai"
-                exit 1
+                return 1
             fi
             _setup_opencode=1
             ;;
@@ -1271,30 +1303,63 @@ cmd_setup_skills() {
             if [ $_claude_available -eq 0 ]; then
                 log_error "Claude Code not found"
                 log_info "Install Claude Code: https://code.claude.com"
-                exit 1
+                return 1
             fi
             _setup_claude=1
             ;;
         *)
             log_error "Unknown tool: $_tool"
             log_info "Valid options: auto, opencode, claude"
-            exit 1
+            return 1
             ;;
     esac
+    
+    # Export variables for caller
+    # shellcheck disable=SC2034
+    SETUP_PROJECT_ROOT="$_project_root"
+    # shellcheck disable=SC2034
+    SETUP_OPENCODE=$_setup_opencode
+    # shellcheck disable=SC2034
+    SETUP_CLAUDE=$_setup_claude
+    
+    return 0
+}
+
+# Command: setup-skills (slash commands only)
+cmd_setup_skills() {
+    _tool="auto"
+    _dry_run=0
+    
+    # Parse arguments
+    for _arg in "$@"; do
+        case "$_arg" in
+            --tool=*)
+                _tool="${_arg#*=}"
+                ;;
+            --dry-run)
+                _dry_run=1
+                ;;
+        esac
+    done
+    
+    # Run shared preparation
+    if ! prepare_setup "$_tool"; then
+        exit 1
+    fi
     
     # Show what will be done
     if [ $_dry_run -eq 1 ]; then
         printf "\n%s%s[DRY RUN] The following would be created:%s\n\n" "$COLOR_BOLD" "$COLOR_YELLOW" "$COLOR_RESET"
     fi
     
-    # Setup OpenCode
-    if [ $_setup_opencode -eq 1 ]; then
-        setup_opencode_skills "$_project_root" "$_dry_run"
+    # Setup OpenCode skills
+    if [ "$SETUP_OPENCODE" -eq 1 ]; then
+        setup_opencode_skills_only "$SETUP_PROJECT_ROOT" "$_dry_run"
     fi
     
-    # Setup Claude Code
-    if [ $_setup_claude -eq 1 ]; then
-        setup_claude_skills "$_project_root" "$_dry_run"
+    # Setup Claude Code skills
+    if [ "$SETUP_CLAUDE" -eq 1 ]; then
+        setup_claude_skills_only "$SETUP_PROJECT_ROOT" "$_dry_run"
     fi
     
     if [ "$_dry_run" -eq 1 ]; then
@@ -1302,13 +1367,65 @@ cmd_setup_skills() {
     else
         printf "\n%s%sSetup complete!%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
         
-        if [ "$_setup_opencode" -eq 1 ]; then
+        if [ "$SETUP_OPENCODE" -eq 1 ]; then
             printf "OpenCode skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+        fi
+        
+        if [ "$SETUP_CLAUDE" -eq 1 ]; then
+            printf "Claude Code skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+        fi
+        
+        printf "\n"
+    fi
+}
+
+# Command: setup-agents (custom subagents only)
+cmd_setup_agents() {
+    _tool="auto"
+    _dry_run=0
+    
+    # Parse arguments
+    for _arg in "$@"; do
+        case "$_arg" in
+            --tool=*)
+                _tool="${_arg#*=}"
+                ;;
+            --dry-run)
+                _dry_run=1
+                ;;
+        esac
+    done
+    
+    # Run shared preparation
+    if ! prepare_setup "$_tool"; then
+        exit 1
+    fi
+    
+    # Show what will be done
+    if [ $_dry_run -eq 1 ]; then
+        printf "\n%s%s[DRY RUN] The following would be created:%s\n\n" "$COLOR_BOLD" "$COLOR_YELLOW" "$COLOR_RESET"
+    fi
+    
+    # Setup OpenCode agents
+    if [ "$SETUP_OPENCODE" -eq 1 ]; then
+        setup_opencode_agents_only "$SETUP_PROJECT_ROOT" "$_dry_run"
+    fi
+    
+    # Setup Claude Code agents
+    if [ "$SETUP_CLAUDE" -eq 1 ]; then
+        setup_claude_agents_only "$SETUP_PROJECT_ROOT" "$_dry_run"
+    fi
+    
+    if [ "$_dry_run" -eq 1 ]; then
+        printf "\n%sRun without --dry-run to create these files%s\n\n" "$COLOR_YELLOW" "$COLOR_RESET"
+    else
+        printf "\n%s%sSetup complete!%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+        
+        if [ "$SETUP_OPENCODE" -eq 1 ]; then
             printf "OpenCode agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
-        if [ "$_setup_claude" -eq 1 ]; then
-            printf "Claude Code skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+        if [ "$SETUP_CLAUDE" -eq 1 ]; then
             printf "Claude Code agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
@@ -1524,7 +1641,8 @@ cmd_templates() {
             log_info "Next steps:"
             log_info "  1. Customize templates: vim $_project_templates/skills/opencode/..."
             log_info "  2. Generate skills: aiassisted setup-skills"
-            log_info "  3. Commit to git: git add .aiassisted/templates/"
+            log_info "  3. Generate agents: aiassisted setup-agents"
+            log_info "  4. Commit to git: git add .aiassisted/templates/"
             ;;
         
         sync)
@@ -1675,7 +1793,8 @@ Commands:
   install [--path=DIR]              Install .aiassisted to directory (default: current)
   update [--force] [--path=DIR]     Update existing .aiassisted installation
   check [--path=DIR]                Check if updates are available
-  setup-skills [--tool=TOOL]        Setup AI agent skills (opencode, claude, or auto)
+  setup-skills [--tool=TOOL]        Setup AI skills/slash commands (opencode, claude, or auto)
+  setup-agents [--tool=TOOL]        Setup AI custom agents (opencode, claude, or auto)
   templates <subcommand>            Manage templates (list, show, init, sync, path, diff)
   config <subcommand>               Manage configuration (show, get, edit, reset, path)
   version                           Show CLI version
@@ -1706,15 +1825,19 @@ Examples:
   # Force update without confirmation
   aiassisted update --force
 
-  # Setup AI agent skills (auto-detect tools)
+  # Setup AI skills/slash commands (auto-detect tools)
   aiassisted setup-skills
+
+  # Setup AI custom agents (auto-detect tools)
+  aiassisted setup-agents
 
   # Setup for specific tool
   aiassisted setup-skills --tool=opencode
-  aiassisted setup-skills --tool=claude
+  aiassisted setup-agents --tool=claude
 
   # Preview what would be created
   aiassisted setup-skills --dry-run
+  aiassisted setup-agents --dry-run
 
   # Manage templates
   aiassisted templates list          # List all templates
@@ -1768,6 +1891,9 @@ main() {
             ;;
         setup-skills)
             cmd_setup_skills "$@"
+            ;;
+        setup-agents)
+            cmd_setup_agents "$@"
             ;;
         templates)
             cmd_templates "$@"
