@@ -42,3 +42,6 @@ test-*/
 # Build artifacts
 *.tar.gz
 *.zip
+
+# Custom Agent
+.opencode/
