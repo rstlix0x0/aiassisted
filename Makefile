@@ -1,4 +1,4 @@
-.PHONY: help update-version lint lint-strict install-shellcheck test test-cli test-installer test-runtimes clean status check-uncommitted
+.PHONY: help update-version lint lint-strict install-shellcheck test test-cli test-installer test-setup clean status check-uncommitted
 
 # Default target
 help:
@@ -7,26 +7,19 @@ help:
 	@echo "Common targets:"
 	@echo "  make help              - Show this help message"
 	@echo "  make update-version    - Update .version and FILES.txt with checksums"
-	@echo "  make lint              - Lint all source code (shell, python, typescript)"
+	@echo "  make lint              - Lint all source code (shell scripts)"
 	@echo "  make lint-strict       - Lint all source code (fails if linters not available)"
 	@echo "  make install-shellcheck - Install shellcheck via Homebrew (macOS only)"
 	@echo "  make test              - Run all tests"
 	@echo "  make test-cli          - Test CLI commands"
 	@echo "  make test-installer    - Test installer script"
-	@echo "  make test-runtimes     - Test all runtime backends"
+	@echo "  make test-setup        - Test setup-skills and setup-agents commands"
 	@echo "  make status            - Show git status and file counts"
 	@echo "  make check-uncommitted - Check for uncommitted changes"
 	@echo "  make clean             - Clean temporary files and build artifacts"
 	@echo ""
-	@echo "Runtime-specific targets:"
+	@echo "Shell-specific targets:"
 	@echo "  make lint-shell        - Lint shell scripts"
-	@echo "  make lint-python       - Lint Python code (ruff/mypy)"
-	@echo "  make lint-bun          - Lint TypeScript code"
-	@echo "  make test-shell        - Test shell runtime"
-	@echo "  make test-python       - Test Python runtime"
-	@echo "  make test-bun          - Test Bun runtime"
-	@echo "  make deps-python       - Install Python dependencies"
-	@echo "  make deps-bun          - Install Bun dependencies"
 	@echo ""
 	@echo "Workflow for updating guidelines:"
 	@echo "  1. Edit files in .aiassisted/"
@@ -48,7 +41,7 @@ update-version:
 	@echo "  git commit -m 'docs: update .aiassisted content'"
 
 # Lint shell scripts (graceful skip if shellcheck not installed)
-lint: lint-shell lint-python lint-bun
+lint: lint-shell
 	@echo ""
 	@echo "✓ All linting passed"
 
@@ -70,28 +63,7 @@ lint-shell:
 		echo "     Install: make install-shellcheck"; \
 	fi
 
-# Lint Python code
-lint-python:
-	@echo "Linting Python code..."
-	@if command -v uv >/dev/null 2>&1; then \
-		cd src/python && uv run ruff check aiassisted/ 2>/dev/null && echo "  ✓ Python code passed ruff" || echo "  ⚠  ruff not configured (optional)"; \
-	else \
-		echo "  ⚠  uv not found - skipping Python lint"; \
-		echo "     Install: https://docs.astral.sh/uv/getting-started/installation/"; \
-	fi
-
-# Lint TypeScript code
-lint-bun:
-	@echo "Linting TypeScript code..."
-	@if command -v bun >/dev/null 2>&1; then \
-		cd src/bun && bun run --bun tsc --noEmit 2>/dev/null && echo "  ✓ TypeScript code passed type check" || echo "  ⚠  TypeScript type check skipped"; \
-	else \
-		echo "  ⚠  bun not found - skipping TypeScript lint"; \
-		echo "     Install: https://bun.sh/docs/installation"; \
-	fi
-
-# Lint shell scripts (fails if shellcheck not installed - for CI)
-lint-strict: lint-shell-strict lint-python lint-bun
+# Strict shell linting
 	@echo ""
 	@echo "✓ All linting passed (strict mode)"
 
@@ -133,7 +105,7 @@ install-shellcheck:
 	fi
 
 # Run all tests
-test: test-syntax test-cli test-installer test-runtimes
+test: test-syntax test-cli test-installer test-setup
 	@echo ""
 	@echo "✓ All tests passed"
 
@@ -157,34 +129,14 @@ test-installer:
 	@echo "Testing installer..."
 	@sh -n install.sh && echo "  ✓ Installer syntax OK" || exit 1
 	@grep -q "GITHUB_REPO=" install.sh && echo "  ✓ GITHUB_REPO defined" || exit 1
-	@grep -q "download_file" install.sh && echo "  ✓ download_file function exists" || exit 1
+	@grep -q "git clone" install.sh && echo "  ✓ git clone installation exists" || exit 1
 
-# Test all runtime backends
-test-runtimes: test-shell test-python test-bun
-	@echo "  ✓ All runtimes tested"
-
-# Test shell runtime
-test-shell:
-	@echo "Testing shell runtime..."
-	@./bin/aiassisted version --runtime=shell >/dev/null && echo "  ✓ Shell runtime works" || exit 1
-
-# Test Python runtime
-test-python:
-	@echo "Testing Python runtime..."
-	@if command -v uv >/dev/null 2>&1; then \
-		./bin/aiassisted version --runtime=python 2>/dev/null >/dev/null && echo "  ✓ Python runtime works" || exit 1; \
-	else \
-		echo "  ⚠  UV not installed - skipping Python runtime test"; \
-	fi
-
-# Test Bun runtime
-test-bun:
-	@echo "Testing Bun runtime..."
-	@if command -v bun >/dev/null 2>&1; then \
-		./bin/aiassisted version --runtime=bun >/dev/null && echo "  ✓ Bun runtime works" || exit 1; \
-	else \
-		echo "  ⚠  Bun not installed - skipping Bun runtime test"; \
-	fi
+# Test setup commands
+test-setup:
+	@echo "Testing setup commands..."
+	@./bin/aiassisted setup-skills --dry-run >/dev/null && echo "  ✓ setup-skills --dry-run works" || exit 1
+	@./bin/aiassisted setup-agents --dry-run >/dev/null && echo "  ✓ setup-agents --dry-run works" || exit 1
+	@echo "  ✓ Setup commands working"
 
 # Show project status
 status:
@@ -193,15 +145,11 @@ status:
 	@echo "Git Status:"
 	@git status --short
 	@echo ""
-	@echo "Runtime Availability:"
-	@echo "  Shell:  ✓ (always available)"
-	@command -v uv >/dev/null 2>&1 && echo "  Python: ✓ (uv $$(uv --version | cut -d' ' -f2))" || echo "  Python: ✗ (uv not installed)"
-	@command -v bun >/dev/null 2>&1 && echo "  Bun:    ✓ (bun $$(bun --version))" || echo "  Bun:    ✗ (bun not installed)"
-	@echo ""
 	@echo "File Counts:"
 	@echo "  Guidelines:   $$(find .aiassisted/guidelines -type f 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo "  Instructions: $$(find .aiassisted/instructions -type f 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo "  Prompts:      $$(find .aiassisted/prompts -type f 2>/dev/null | wc -l | tr -d ' ') files"
+	@echo "  Templates:    $$(find .aiassisted/templates -type f 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo "  Total:        $$(find .aiassisted -type f ! -name '.version' ! -name 'FILES.txt' 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo ""
 	@if [ -f .aiassisted/.version ]; then \
@@ -226,38 +174,7 @@ clean:
 	@echo "Cleaning temporary files and build artifacts..."
 	@find . -name "*.tmp" -delete
 	@find . -name ".DS_Store" -delete
-	@rm -rf src/python/.venv
-	@rm -rf src/python/__pycache__
-	@rm -rf src/python/**/__pycache__
-	@rm -rf src/bun/node_modules
 	@echo "✓ Cleaned"
-
-# Install Python dependencies
-deps-python:
-	@echo "Installing Python dependencies..."
-	@if command -v uv >/dev/null 2>&1; then \
-		cd src/python && uv sync && echo "✓ Python dependencies installed"; \
-	else \
-		echo "✗ Error: UV not installed"; \
-		echo "  Install: https://docs.astral.sh/uv/getting-started/installation/"; \
-		exit 1; \
-	fi
-
-# Install Bun dependencies
-deps-bun:
-	@echo "Installing Bun dependencies..."
-	@if command -v bun >/dev/null 2>&1; then \
-		cd src/bun && bun install && echo "✓ Bun dependencies installed"; \
-	else \
-		echo "✗ Error: Bun not installed"; \
-		echo "  Install: https://bun.sh/docs/installation"; \
-		exit 1; \
-	fi
-
-# Install all dependencies
-deps: deps-python deps-bun
-	@echo ""
-	@echo "✓ All dependencies installed"
 
 # Verify FILES.txt is up-to-date
 verify-manifest:
