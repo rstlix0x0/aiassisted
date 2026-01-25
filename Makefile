@@ -1,4 +1,4 @@
-.PHONY: help update-version lint test test-cli test-installer clean status check-uncommitted
+.PHONY: help update-version lint lint-strict install-shellcheck test test-cli test-installer clean status check-uncommitted
 
 # Default target
 help:
@@ -7,7 +7,9 @@ help:
 	@echo "Common targets:"
 	@echo "  make help              - Show this help message"
 	@echo "  make update-version    - Update .version and FILES.txt with checksums"
-	@echo "  make lint              - Lint shell scripts with shellcheck"
+	@echo "  make lint              - Lint shell scripts (skips if shellcheck not available)"
+	@echo "  make lint-strict       - Lint shell scripts (fails if shellcheck not available)"
+	@echo "  make install-shellcheck - Install shellcheck via Homebrew (macOS only)"
 	@echo "  make test              - Run all tests"
 	@echo "  make test-cli          - Test CLI commands"
 	@echo "  make test-installer    - Test installer script"
@@ -34,7 +36,7 @@ update-version:
 	@echo "  git add .aiassisted/"
 	@echo "  git commit -m 'docs: update .aiassisted content'"
 
-# Lint shell scripts
+# Lint shell scripts (graceful skip if shellcheck not installed)
 lint:
 	@echo "Linting shell scripts..."
 	@if command -v shellcheck >/dev/null 2>&1; then \
@@ -44,11 +46,55 @@ lint:
 		shellcheck bin/aiassisted || exit 1; \
 		echo "Checking scripts/update-version.sh..."; \
 		shellcheck scripts/update-version.sh || exit 1; \
+		echo ""; \
 		echo "✓ All scripts passed shellcheck"; \
 	else \
-		echo "⚠ shellcheck not found, skipping lint"; \
+		echo "⚠  shellcheck not found - skipping lint (this is OK for local development)"; \
+		echo ""; \
+		echo "To enable linting, install shellcheck:"; \
+		echo "  macOS:   brew install shellcheck"; \
+		echo "  Ubuntu:  sudo apt-get install shellcheck"; \
+		echo "  Fedora:  sudo dnf install shellcheck"; \
+		echo ""; \
+		echo "Or run: make install-shellcheck (macOS only)"; \
+		echo ""; \
+		echo "✓ Lint skipped (no shellcheck available)"; \
+	fi
+
+# Lint shell scripts (fails if shellcheck not installed - for CI)
+lint-strict:
+	@echo "Linting shell scripts (strict mode)..."
+	@if ! command -v shellcheck >/dev/null 2>&1; then \
+		echo "✗ Error: shellcheck is required but not installed"; \
 		echo "  Install: brew install shellcheck (macOS)"; \
-		echo "           apt-get install shellcheck (Debian/Ubuntu)"; \
+		exit 1; \
+	fi
+	@echo "Checking install.sh..."
+	@shellcheck install.sh || exit 1
+	@echo "Checking bin/aiassisted..."
+	@shellcheck bin/aiassisted || exit 1
+	@echo "Checking scripts/update-version.sh..."
+	@shellcheck scripts/update-version.sh || exit 1
+	@echo ""
+	@echo "✓ All scripts passed shellcheck"
+
+# Install shellcheck (macOS only)
+install-shellcheck:
+	@echo "Installing shellcheck..."
+	@if [ "$$(uname -s)" = "Darwin" ]; then \
+		if command -v brew >/dev/null 2>&1; then \
+			brew install shellcheck && echo "✓ shellcheck installed"; \
+		else \
+			echo "✗ Error: Homebrew not found"; \
+			echo "  Install Homebrew from: https://brew.sh"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "✗ Error: This target only works on macOS"; \
+		echo "  On Linux, use your package manager:"; \
+		echo "    Ubuntu/Debian: sudo apt-get install shellcheck"; \
+		echo "    Fedora:        sudo dnf install shellcheck"; \
+		exit 1; \
 	fi
 
 # Run all tests
