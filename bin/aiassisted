@@ -191,6 +191,50 @@ verify_runtime() {
 # Runtime Commands
 ###########################################
 
+cmd_runtime_help() {
+    cat <<'EOF'
+aiassisted runtime - Manage runtime backends
+
+Usage:
+  aiassisted runtime <subcommand> [options]
+
+Subcommands:
+  list              List available runtimes and show which is active
+  set <runtime>     Set preferred runtime (shell, python, bun)
+  info              Show current runtime information
+  help              Show this help message
+
+Runtimes:
+  shell             POSIX-compliant shell (default, zero dependencies)
+  python            Python + UV runtime (fast, parallel downloads)
+  bun               Bun + TypeScript runtime (fastest)
+
+Examples:
+  # List all available runtimes
+  aiassisted runtime list
+
+  # Set preferred runtime to Python
+  aiassisted runtime set python
+
+  # Show current runtime info
+  aiassisted runtime info
+
+  # Override runtime for single command
+  aiassisted install --runtime=shell
+  aiassisted update --runtime=python
+
+Notes:
+  - Shell runtime is always available (zero dependencies)
+  - Python runtime requires UV to be installed
+  - Bun runtime requires Bun to be installed
+  - Use --runtime=<name> flag to override for single command
+  - Runtime preference is saved to ~/.config/aiassisted/config
+
+For more information, visit:
+  https://github.com/rstlix0x0/aiassisted
+EOF
+}
+
 cmd_runtime_list() {
     printf "\n%s%sAvailable Runtimes:%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
     
@@ -373,9 +417,14 @@ main() {
                     cmd_runtime_info "$@"
                     exit 0
                     ;;
+                help|-h|--help)
+                    cmd_runtime_help
+                    exit 0
+                    ;;
                 *)
                     log_error "Unknown runtime subcommand: $_subcommand"
-                    printf "Valid subcommands: list, set, info\n"
+                    printf "Valid subcommands: list, set, info, help\n"
+                    printf "Run 'aiassisted runtime help' for more information\n"
                     exit 1
                     ;;
             esac
