@@ -843,7 +843,13 @@ cmd_self_update() {
 detect_project_root() {
     if ! _root=$(git rev-parse --show-toplevel 2>/dev/null); then
         log_error "Not in a git repository"
-        log_info "setup-skills and setup-agents must be run from within a git repository"
+        printf "\n" >&2
+        log_info "This command requires a git repository to determine the project root."
+        printf "\n" >&2
+        log_info "To fix this:"
+        printf "  1. Initialize git: %sgit init%s\n" "$COLOR_BOLD" "$COLOR_RESET" >&2
+        printf "  2. Then run this command again\n" >&2
+        printf "\n" >&2
         return 1
     fi
     echo "$_root"
@@ -1158,9 +1164,27 @@ setup_opencode_agents_only() {
         log_warn "Skipping ai-knowledge-architecture agent (template not found)"
     fi
     
+    # Setup git-commit agent
+    log_debug "Creating git-commit agent..."
+    if _template_path=$(find_template "agents/opencode/git-commit.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/agents/git-commit.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/agents/git-commit.md"
+            echo "    from: $_template_path"
+        fi
+    else
+        log_warn "Skipping git-commit agent (template not found)"
+    fi
+    
     if [ "$_dry_run" -eq 0 ]; then
         log_success "OpenCode agents setup complete!"
-        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
+        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture, git-commit"
     fi
 }
 
@@ -1218,9 +1242,27 @@ setup_claude_agents_only() {
         log_warn "Skipping ai-knowledge-architecture agent (template not found)"
     fi
     
+    # Setup git-commit agent
+    log_debug "Creating git-commit agent..."
+    if _template_path=$(find_template "agents/claude/git-commit.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_claude_dir/agents/git-commit.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .claude/agents/git-commit.md"
+            echo "    from: $_template_path"
+        fi
+    else
+        log_warn "Skipping git-commit agent (template not found)"
+    fi
+    
     if [ "$_dry_run" -eq 0 ]; then
         log_success "Claude Code agents setup complete!"
-        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture"
+        log_info "Created agents: ai-knowledge-rust, ai-knowledge-architecture, git-commit"
     fi
 }
 
@@ -1420,11 +1462,11 @@ cmd_setup_agents() {
         printf "\n%s%sSetup complete!%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
         
         if [ "$SETUP_OPENCODE" -eq 1 ]; then
-            printf "OpenCode agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+            printf "OpenCode agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s, %sgit-commit%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
         if [ "$SETUP_CLAUDE" -eq 1 ]; then
-            printf "Claude Code agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
+            printf "Claude Code agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s, %sgit-commit%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
         printf "\n"
