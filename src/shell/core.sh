@@ -1723,17 +1723,8 @@ Examples:
 
   # Manage configuration
   aiassisted config show                 # View current config
-  aiassisted config get default_runtime  # Get specific value
+  aiassisted config get verbosity        # Get specific value
   aiassisted config edit                 # Edit in $EDITOR
-
-  # Manage runtime backends
-  aiassisted runtime list                # List available runtimes
-  aiassisted runtime set python          # Set preferred runtime
-  aiassisted runtime help                # Show runtime help
-
-  # Override runtime for single command
-  aiassisted install --runtime=shell
-  aiassisted update --runtime=python
 
   # Update CLI tool itself
   aiassisted self-update
