@@ -277,6 +277,11 @@ download_aiassisted() {
         return 1
     fi
     
+    # Count total files for progress
+    _total_files=$(grep -c -v -E '^(#|$)' "$_manifest" 2>/dev/null || echo "0")
+    _current_file=0
+    _downloaded_bytes=0
+    
     # Read manifest and download each file with checksum verification
     while IFS=: read -r _filepath _expected_hash || [ -n "$_filepath" ]; do
         # Skip empty lines and comments
@@ -284,11 +289,17 @@ download_aiassisted() {
             ''|'#'*) continue ;;
         esac
         
+        _current_file=$((_current_file + 1))
         _file_dir="$(dirname "$_filepath")"
         mkdir -p "$_target_dir/$_file_dir"
         
-        log_debug "Downloading $_filepath..."
+        # Show progress - use simple counter without carriage return
+        if [ $((_current_file % 5)) -eq 0 ] || [ $_current_file -eq 1 ] || [ $_current_file -eq $_total_files ]; then
+            log_info "Progress: $_current_file/$_total_files files downloaded"
+        fi
+        
         if ! download_file "${GITHUB_RAW_URL}/.aiassisted/${_filepath}" "$_target_dir/$_filepath"; then
+            printf "\n" >&2
             log_error "Failed to download $_filepath"
             rm -rf "$_temp_dir"
             return 1
@@ -296,17 +307,34 @@ download_aiassisted() {
         
         # Verify checksum
         if ! verify_checksum "$_target_dir/$_filepath" "$_expected_hash"; then
+            printf "\n" >&2
             log_error "Checksum verification failed for $_filepath"
             rm -rf "$_temp_dir"
             return 1
         fi
-        log_debug "Verified checksum for $_filepath"
+        
+        # Track downloaded size
+        if [ -f "$_target_dir/$_filepath" ]; then
+            _file_size=$(wc -c < "$_target_dir/$_filepath" 2>/dev/null || echo "0")
+            _downloaded_bytes=$((_downloaded_bytes + _file_size))
+        fi
     done < "$_manifest"
     
     # Copy FILES.txt to target
     cp "$_manifest" "$_target_dir/FILES.txt"
     
-    log_success "Downloaded .aiassisted directory to $_temp_dir"
+    # Calculate size in human-readable format
+    if [ "$_downloaded_bytes" -ge 1048576 ]; then
+        _size_mb=$(((_downloaded_bytes + 524288) / 1048576))
+        _size_display="${_size_mb}MB"
+    elif [ "$_downloaded_bytes" -ge 1024 ]; then
+        _size_kb=$(((_downloaded_bytes + 512) / 1024))
+        _size_display="${_size_kb}KB"
+    else
+        _size_display="${_downloaded_bytes}B"
+    fi
+    
+    log_success "Downloaded $_total_files files ($_size_display)"
     echo "$_temp_dir"
 }
 
@@ -547,16 +575,31 @@ cmd_install() {
     
     rm -rf "$_temp_dir"
     
-    # Show version info
-    _installed_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
-    log_success "Successfully installed .aiassisted (version: $_installed_hash)"
+    # Count installed items
+    _guideline_count=$(find "$_target_path/.aiassisted/guidelines" -type f 2>/dev/null | wc -l | tr -d ' ')
+    _instruction_count=$(find "$_target_path/.aiassisted/instructions" -type f 2>/dev/null | wc -l | tr -d ' ')
+    _template_count=$(find "$_target_path/.aiassisted/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
     
-    # Show quick tips
-    printf "\n%s%sQuick Tips:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
-    printf "  • Your .aiassisted directory is now ready to use\n"
-    printf "  • Update to latest version: %saiassisted update%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  • Check for updates: %saiassisted check%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  • View all commands: %saiassisted help%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
+    # Show version info and summary
+    _installed_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
+    _short_hash=$(echo "$_installed_hash" | cut -c1-7)
+    
+    printf "\n"
+    log_success "Installation complete!"
+    
+    # Show installation summary
+    printf "\n%s%sInstallation Summary:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+    printf "  %sLocation:%s     %s\n" "$COLOR_BOLD" "$COLOR_RESET" "$_target_path/.aiassisted"
+    printf "  %sVersion:%s      %s\n" "$COLOR_BOLD" "$COLOR_RESET" "$_short_hash"
+    printf "  %sGuidelines:%s   %s file(s)\n" "$COLOR_BOLD" "$COLOR_RESET" "$_guideline_count"
+    printf "  %sInstructions:%s %s file(s)\n" "$COLOR_BOLD" "$COLOR_RESET" "$_instruction_count"
+    printf "  %sTemplates:%s    %s file(s)\n" "$COLOR_BOLD" "$COLOR_RESET" "$_template_count"
+    
+    # Show next steps
+    printf "\n%s%sNext Steps:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+    printf "  1. Customize AI behavior: %saiassisted setup-skills%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  2. Update content: %saiassisted update%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  3. View all commands: %saiassisted help%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
 }
 
 cmd_update() {
@@ -684,7 +727,17 @@ cmd_update() {
     rm -rf "$_temp_dir"
     rm -f "$_remote_manifest"
     
-    log_success "Successfully updated to version $_remote_hash"
+    _short_remote=$(echo "$_remote_hash" | cut -c1-7)
+    _short_local=$(echo "$_local_hash" | cut -c1-7)
+    
+    printf "\n"
+    log_success "Update complete!"
+    
+    # Show update summary
+    printf "\n%s%sUpdate Summary:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
+    printf "  %sPrevious:%s %s\n" "$COLOR_BOLD" "$COLOR_RESET" "$_short_local"
+    printf "  %sCurrent:%s  %s\n" "$COLOR_BOLD" "$COLOR_RESET" "$_short_remote"
+    printf "  %sLocation:%s %s\n\n" "$COLOR_BOLD" "$COLOR_RESET" "$_target_path/.aiassisted"
 }
 
 cmd_check() {
