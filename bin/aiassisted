@@ -469,8 +469,7 @@ cmd_install() {
             _local_hash=$(parse_version_file "$_target_path/.aiassisted/.version" "COMMIT_HASH")
             
             # Fetch remote version
-            _remote_version_file=$(fetch_remote_version)
-            if [ $? -ne 0 ]; then
+            if ! _remote_version_file=$(fetch_remote_version); then
                 log_error "Failed to fetch remote version information"
                 exit 1
             fi
@@ -496,8 +495,7 @@ cmd_install() {
     fi
     
     # Download .aiassisted
-    _temp_dir=$(download_aiassisted)
-    if [ $? -ne 0 ]; then
+    if ! _temp_dir=$(download_aiassisted); then
         log_error "Failed to download .aiassisted"
         exit 1
     fi
@@ -559,8 +557,7 @@ cmd_update() {
     fi
     
     # Fetch remote version
-    _remote_version_file=$(fetch_remote_version)
-    if [ $? -ne 0 ]; then
+    if ! _remote_version_file=$(fetch_remote_version); then
         log_error "Failed to fetch remote version information"
         exit 1
     fi
@@ -590,8 +587,7 @@ cmd_update() {
     fi
     
     # Download only changed files
-    _temp_dir=$(download_changed_files "$_target_path" "$_remote_manifest")
-    if [ $? -ne 0 ]; then
+    if ! _temp_dir=$(download_changed_files "$_target_path" "$_remote_manifest"); then
         log_error "Failed to download changed files"
         rm -f "$_remote_manifest"
         exit 1
@@ -622,7 +618,7 @@ cmd_update() {
                 echo "$_diff_output" | head -n 100
                 _diff_lines=$(echo "$_diff_output" | wc -l | tr -d '[:space:]')
                 if [ "$_diff_lines" -gt 100 ]; then
-                    printf "\n%s... (%d more lines)%s\n\n" "$COLOR_BLUE" "$((${_diff_lines} - 100))" "$COLOR_RESET"
+                    printf "\n%s... (%d more lines)%s\n\n" "$COLOR_BLUE" "$((_diff_lines - 100))" "$COLOR_RESET"
                 else
                     printf "\n"
                 fi
@@ -676,8 +672,7 @@ cmd_check() {
     fi
     
     # Fetch remote version
-    _remote_version_file=$(fetch_remote_version)
-    if [ $? -ne 0 ]; then
+    if ! _remote_version_file=$(fetch_remote_version); then
         log_error "Failed to fetch remote version information"
         exit 1
     fi
