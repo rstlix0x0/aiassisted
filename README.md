@@ -13,6 +13,22 @@ A simple, safe installer for AI-Assisted Engineering Guidelines. This tool helps
 - **Colored terminal output** with automatic capability detection
 - **Parallel downloads** with Python and Bun runtimes for faster installs
 
+## Requirements
+
+- **git** - Required for installation and updates
+  - macOS: `xcode-select --install`
+  - Ubuntu/Debian: `sudo apt install git`
+  - Fedora: `sudo dnf install git`
+  - Arch: `sudo pacman -S git`
+
+**Optional runtimes** (one or more recommended):
+- **Python + UV** - For faster parallel downloads
+  - Install UV: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Bun** - For fastest performance
+  - Install Bun: `curl -fsSL https://bun.sh/install | bash`
+
+The tool will auto-detect which runtime to use. Shell runtime works everywhere with zero dependencies (besides git).
+
 ## Quick Start
 
 Install the CLI tool and `.aiassisted` directory in one command:
@@ -22,10 +38,13 @@ curl -fsSL https://raw.githubusercontent.com/rstlix0x0/aiassisted/main/install.s
 ```
 
 This will:
-1. Install the `aiassisted` CLI to `~/.local/bin/`
-2. Add `~/.local/bin` to your PATH (if needed)
-3. Install `.aiassisted/` directory to your current directory
-4. Show quick usage tips
+1. Check that `git` is installed
+2. Clone the repository to `~/.aiassisted/source/aiassisted/`
+3. Create a symlink at `~/.local/bin/aiassisted`
+4. Add `~/.local/bin` to your PATH (if needed)
+5. Set up global config at `~/.aiassisted/config.toml`
+6. Install `.aiassisted/` directory to your current directory
+7. Show quick usage tips
 
 After installation, restart your terminal or run:
 ```bash
@@ -72,9 +91,15 @@ aiassisted update --path=/path/to/project
 
 ### Update the CLI Tool
 
-Update the `aiassisted` CLI tool itself:
+Update the `aiassisted` CLI tool itself (uses `git pull`):
 ```bash
 aiassisted self-update
+```
+
+This will pull the latest changes from the repository and show you what was updated. You can view the changelog with:
+```bash
+cd ~/.aiassisted/source/aiassisted
+git log --oneline -10
 ```
 
 ### Setup AI Agent Skills
@@ -249,7 +274,7 @@ Available Runtimes:
 
 ### Set Preferred Runtime
 
-Set your preferred runtime (saved to `~/.config/aiassisted/config`):
+Set your preferred runtime (saved to `~/.aiassisted/config`):
 
 ```bash
 # Use Python runtime by default
@@ -292,6 +317,37 @@ If no runtime is configured, `aiassisted` auto-detects in this order:
 - `--path=DIR` - Specify target directory (default: current directory)
 - `--runtime=<shell|python|bun>` - Select runtime backend explicitly
 - `--force` - Skip confirmation prompts (update command only)
+
+## Installation Structure
+
+The installer creates the following structure:
+
+```
+~/.aiassisted/                      # Main directory (everything lives here)
+├── config.toml                    # Global configuration
+├── templates/                     # User-customizable templates
+├── cache/                        # Temporary cache files
+├── state/                        # Runtime state
+└── source/                       # Source code
+    └── aiassisted/               # Git clone of the repository
+        ├── .git/                 # Git metadata (for updates)
+        ├── bin/aiassisted        # CLI orchestrator
+        ├── src/
+        │   ├── shell/            # Shell runtime backend
+        │   ├── python/           # Python runtime backend
+        │   └── bun/              # Bun runtime backend
+        ├── .aiassisted/          # Guidelines and instructions
+        └── README.md
+
+~/.local/bin/aiassisted            # Symlink → ~/.aiassisted/source/aiassisted/bin/aiassisted
+```
+
+**Benefits of this structure:**
+- **Single source of truth**: Everything in `~/.aiassisted/`
+- **Easy updates**: `aiassisted self-update` runs `git pull`
+- **Easy uninstall**: `rm -rf ~/.aiassisted ~/.local/bin/aiassisted`
+- **Inspect source**: `cd ~/.aiassisted/source/aiassisted`
+- **View changes**: `cd ~/.aiassisted/source/aiassisted && git log`
 
 ## What's Inside `.aiassisted`?
 
