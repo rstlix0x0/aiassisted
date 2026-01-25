@@ -196,16 +196,14 @@ add_to_path() {
 install_cli() {
     log_info "Installing aiassisted CLI to $CLI_PATH"
     
-    # Create install directory
-    if [ ! -d "$INSTALL_DIR" ]; then
-        log_info "Creating $INSTALL_DIR"
-        if ! mkdir -p "$INSTALL_DIR"; then
-            log_error "Failed to create $INSTALL_DIR"
-            exit 1
-        fi
+    # Create install directories
+    _runtime_dir="$HOME/.local/share/aiassisted/src/shell"
+    if ! mkdir -p "$INSTALL_DIR" "$_runtime_dir"; then
+        log_error "Failed to create installation directories"
+        exit 1
     fi
     
-    # Download CLI script
+    # Download CLI orchestrator
     _temp_cli=$(mktemp)
     
     log_info "Downloading aiassisted CLI..."
@@ -222,6 +220,23 @@ install_cli() {
     if ! mv "$_temp_cli" "$CLI_PATH"; then
         log_error "Failed to install CLI to $CLI_PATH"
         rm -f "$_temp_cli"
+        exit 1
+    fi
+    
+    # Download shell runtime
+    _temp_runtime=$(mktemp)
+    log_info "Downloading shell runtime..."
+    if ! download_file "${GITHUB_RAW_URL}/src/shell/core.sh" "$_temp_runtime"; then
+        log_error "Failed to download shell runtime"
+        rm -f "$_temp_runtime"
+        exit 1
+    fi
+    
+    # Make executable and move to runtime directory
+    chmod +x "$_temp_runtime"
+    if ! mv "$_temp_runtime" "$_runtime_dir/core.sh"; then
+        log_error "Failed to install shell runtime"
+        rm -f "$_temp_runtime"
         exit 1
     fi
     
@@ -255,7 +270,7 @@ setup_global_config() {
         log_info "Creating default configuration file..."
         _temp_config=$(mktemp)
         
-        if download_file "${GITHUB_RAW_URL}/.aiassisted/config/config.toml.default" "$_temp_config"; then
+        if download_file "${GITHUB_RAW_URL}/.aiassisted/config.toml.default" "$_temp_config"; then
             mv "$_temp_config" "$_config_file"
             log_success "Created configuration file: $_config_file"
         else

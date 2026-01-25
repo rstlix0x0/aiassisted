@@ -22,7 +22,16 @@ set -e
 VERSION="2.0.0"
 
 # Get script directory
-SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# If running from source tree, use parent directory
+# If installed, use ~/.local/share/aiassisted
+_script_parent="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -d "$_script_parent/src/shell" ]; then
+    # Development: source tree exists
+    SCRIPT_DIR="$_script_parent"
+else
+    # Installed: use data directory
+    SCRIPT_DIR="$HOME/.local/share/aiassisted"
+fi
 
 # Config file location
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aiassisted"
