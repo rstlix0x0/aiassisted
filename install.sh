@@ -196,9 +196,13 @@ add_to_path() {
 install_cli() {
     log_info "Installing aiassisted CLI to $CLI_PATH"
     
-    # Create install directories
-    _runtime_dir="$HOME/.local/share/aiassisted/src/shell"
-    if ! mkdir -p "$INSTALL_DIR" "$_runtime_dir"; then
+    # Create install directories for all runtimes
+    _data_dir="$HOME/.local/share/aiassisted"
+    _shell_dir="$_data_dir/src/shell"
+    _python_dir="$_data_dir/src/python"
+    _bun_dir="$_data_dir/src/bun"
+    
+    if ! mkdir -p "$INSTALL_DIR" "$_data_dir" "$_shell_dir" "$_python_dir" "$_bun_dir"; then
         log_error "Failed to create installation directories"
         exit 1
     fi
@@ -234,10 +238,97 @@ install_cli() {
     
     # Make executable and move to runtime directory
     chmod +x "$_temp_runtime"
-    if ! mv "$_temp_runtime" "$_runtime_dir/core.sh"; then
+    if ! mv "$_temp_runtime" "$_shell_dir/core.sh"; then
         log_error "Failed to install shell runtime"
         rm -f "$_temp_runtime"
         exit 1
+    fi
+    
+    # Download README.md for Python runtime (required by pyproject.toml)
+    _temp_readme=$(mktemp)
+    if download_file "${GITHUB_RAW_URL}/README.md" "$_temp_readme"; then
+        mv "$_temp_readme" "$_data_dir/README.md"
+    else
+        log_warn "Failed to download README.md (needed for Python runtime)"
+        rm -f "$_temp_readme"
+    fi
+    
+    # Download Python runtime files
+    log_info "Downloading Python runtime backend..."
+    _python_files_ok=true
+    
+    # Python config and source directory
+    mkdir -p "$_python_dir/aiassisted"
+    
+    # Download pyproject.toml
+    _temp=$(mktemp)
+    if download_file "${GITHUB_RAW_URL}/src/python/pyproject.toml" "$_temp"; then
+        mv "$_temp" "$_python_dir/pyproject.toml"
+    else
+        log_warn "Failed to download pyproject.toml"
+        rm -f "$_temp"
+        _python_files_ok=false
+    fi
+    
+    # Python source files
+    for _file in __init__.py __main__.py cli.py downloader.py installer.py manifest.py; do
+        _temp=$(mktemp)
+        if download_file "${GITHUB_RAW_URL}/src/python/aiassisted/$_file" "$_temp"; then
+            mv "$_temp" "$_python_dir/aiassisted/$_file"
+        else
+            log_warn "Failed to download aiassisted/$_file"
+            rm -f "$_temp"
+            _python_files_ok=false
+        fi
+    done
+    
+    if [ "$_python_files_ok" = true ]; then
+        log_success "Installed Python runtime backend"
+    else
+        log_warn "Python runtime partially installed (some files missing)"
+    fi
+    
+    # Download Bun runtime files
+    log_info "Downloading Bun runtime backend..."
+    _bun_files_ok=true
+    
+    # Bun config and source directory
+    mkdir -p "$_bun_dir/src"
+    
+    # Download config files (tsconfig.json is optional)
+    _temp=$(mktemp)
+    if download_file "${GITHUB_RAW_URL}/src/bun/package.json" "$_temp"; then
+        mv "$_temp" "$_bun_dir/package.json"
+    else
+        log_warn "Failed to download package.json"
+        rm -f "$_temp"
+        _bun_files_ok=false
+    fi
+    
+    _temp=$(mktemp)
+    if download_file "${GITHUB_RAW_URL}/src/bun/tsconfig.json" "$_temp"; then
+        mv "$_temp" "$_bun_dir/tsconfig.json"
+    else
+        # tsconfig.json is optional, don't mark as failure
+        rm -f "$_temp"
+    fi
+    
+    # Bun source files
+    for _file in index.ts cli.ts downloader.ts installer.ts manifest.ts; do
+        _temp=$(mktemp)
+        if download_file "${GITHUB_RAW_URL}/src/bun/src/$_file" "$_temp"; then
+            mv "$_temp" "$_bun_dir/src/$_file"
+        else
+            log_warn "Failed to download src/$_file"
+            rm -f "$_temp"
+            _bun_files_ok=false
+        fi
+    done
+    
+    if [ "$_bun_files_ok" = true ]; then
+        log_success "Installed Bun runtime backend"
+    else
+        log_warn "Bun runtime partially installed (some files missing)"
     fi
     
     log_success "Installed aiassisted CLI to $CLI_PATH"
