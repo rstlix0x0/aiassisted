@@ -1,5 +1,4 @@
 ---
-name: ai-knowledge-architecture
 description: Architecture patterns expert. Specializes in software architecture, design patterns, and system design. Use when answering questions about architecture, patterns, or system design.
 tools: Read, Glob, Grep
 model: sonnet
