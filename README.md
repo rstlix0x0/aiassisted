@@ -154,12 +154,14 @@ Templates are resolved with cascading priority:
 1. **Project templates** (`./.aiassisted/templates/`) - Custom per-project
 2. **Global templates** (`~/.aiassisted/templates/`) - Default templates
 
-To customize templates for a specific project:
+**Easy way - Use the templates command:**
 
 ```bash
-# Copy global templates to project
-mkdir -p .aiassisted/templates
-cp -r ~/.aiassisted/templates/* .aiassisted/templates/
+# Initialize templates in your project (copies from global)
+aiassisted templates init
+
+# List all available templates
+aiassisted templates list
 
 # Edit templates
 vim .aiassisted/templates/skills/opencode/git-commit.SKILL.md.template
@@ -170,7 +172,18 @@ aiassisted setup-skills
 # Commit custom templates to share with team
 git add .aiassisted/templates/
 git commit -m "feat: add custom AI skill templates"
+
+# Later, sync templates from updated global templates
+aiassisted templates sync
 ```
+
+**Templates command reference:**
+- `aiassisted templates list` - List all templates (global and project)
+- `aiassisted templates init` - Copy global templates to project for customization
+- `aiassisted templates show <path>` - Display a specific template
+- `aiassisted templates sync` - Update project templates from global
+- `aiassisted templates diff` - Show differences between project and global
+- `aiassisted templates path` - Show template directory paths
 
 ### View Help
 
@@ -187,6 +200,7 @@ aiassisted help
 | `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
 | `check` | Check if updates available | `--path=DIR`, `--runtime=<shell\|python\|bun>` |
 | `setup-skills` | Setup AI agent skills | `--tool=<opencode\|claude\|auto>`, `--dry-run`, `--runtime=shell` |
+| `templates <subcommand>` | Manage templates | `list`, `show <path>`, `init`, `sync`, `diff`, `path` |
 | `config <subcommand>` | Manage configuration | `show`, `get <key>`, `edit`, `reset`, `path` |
 | `version` | Show CLI version | `--runtime=<shell\|python\|bun>` |
 | `self-update` | Update the CLI tool | - |

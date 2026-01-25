@@ -1336,6 +1336,272 @@ cmd_config() {
     esac
 }
 
+# Templates command
+# Usage: aiassisted templates <subcommand> [args]
+cmd_templates() {
+    _subcommand="${1:-list}"
+    _global_templates="$HOME/.aiassisted/templates"
+    
+    # Detect project root
+    if ! _project_root=$(detect_project_root 2>/dev/null); then
+        _project_root="$(pwd)"
+        _in_git_repo=0
+    else
+        _in_git_repo=1
+    fi
+    
+    _project_templates="$_project_root/.aiassisted/templates"
+    
+    case "$_subcommand" in
+        list)
+            log_info "Template locations:"
+            printf "\n%s%sGlobal templates%s (%s):\n" "$COLOR_BOLD" "$COLOR_BLUE" "$COLOR_RESET" "$_global_templates"
+            
+            if [ -d "$_global_templates" ]; then
+                find "$_global_templates" -name "*.template" -type f | while read -r _template; do
+                    # shellcheck disable=SC2295  # Intentional pattern substitution
+                    _rel_path="${_template#$_global_templates/}"
+                    printf "  %s%s%s\n" "$COLOR_GREEN" "$_rel_path" "$COLOR_RESET"
+                done
+            else
+                printf "  %s(none - run installer to create)%s\n" "$COLOR_YELLOW" "$COLOR_RESET"
+            fi
+            
+            printf "\n%s%sProject templates%s (%s):\n" "$COLOR_BOLD" "$COLOR_BLUE" "$COLOR_RESET" "$_project_templates"
+            
+            if [ -d "$_project_templates" ]; then
+                _template_files=$(find "$_project_templates" -name "*.template" -type f 2>/dev/null)
+                if [ -n "$_template_files" ]; then
+                    echo "$_template_files" | while read -r _template; do
+                        # shellcheck disable=SC2295  # Intentional pattern substitution
+                        _rel_path="${_template#$_project_templates/}"
+                        printf "  %s%s%s (custom)\n" "$COLOR_CYAN" "$_rel_path" "$COLOR_RESET"
+                    done
+                else
+                    printf "  %s(none - run 'aiassisted templates init' to customize)%s\n" "$COLOR_YELLOW" "$COLOR_RESET"
+                fi
+            else
+                printf "  %s(none - run 'aiassisted templates init' to customize)%s\n" "$COLOR_YELLOW" "$COLOR_RESET"
+            fi
+            printf "\n"
+            ;;
+        
+        show)
+            _template_path="$2"
+            if [ -z "$_template_path" ]; then
+                log_error "Usage: aiassisted templates show <path>"
+                log_info "Example: aiassisted templates show skills/opencode/git-commit.SKILL.md.template"
+                return 1
+            fi
+            
+            # Try to find the template
+            if _full_path=$(find_template "$_template_path" "$_project_root" 2>/dev/null); then
+                log_info "Showing: $_full_path"
+                printf "\n"
+                cat "$_full_path"
+            else
+                log_error "Template not found: $_template_path"
+                log_info "Use 'aiassisted templates list' to see available templates"
+                return 1
+            fi
+            ;;
+        
+        init)
+            _force=0
+            if [ "$2" = "--force" ]; then
+                _force=1
+            fi
+            
+            # Check if .aiassisted directory exists
+            if [ ! -d "$_project_root/.aiassisted" ]; then
+                log_error ".aiassisted directory not found in project root"
+                log_info "Run 'aiassisted install' first to set up the project"
+                return 1
+            fi
+            
+            # Check if templates already exist
+            if [ -d "$_project_templates" ] && [ $_force -eq 0 ]; then
+                log_warn "Project templates directory already exists: $_project_templates"
+                printf "Overwrite existing templates? [y/N]: "
+                read -r _response
+                case "$_response" in
+                    [yY]|[yY][eE][sS])
+                        log_info "Overwriting existing templates..."
+                        ;;
+                    *)
+                        log_info "Cancelled"
+                        return 0
+                        ;;
+                esac
+            fi
+            
+            # Check if global templates exist
+            if [ ! -d "$_global_templates" ]; then
+                log_error "Global templates not found: $_global_templates"
+                log_info "Run the installer again to download templates"
+                return 1
+            fi
+            
+            # Copy templates
+            log_info "Copying templates from global to project..."
+            
+            if ! mkdir -p "$_project_templates"; then
+                log_error "Failed to create project templates directory"
+                return 1
+            fi
+            
+            if ! cp -r "$_global_templates"/* "$_project_templates"/; then
+                log_error "Failed to copy templates"
+                return 1
+            fi
+            
+            _count=$(find "$_project_templates" -name "*.template" -type f | wc -l | tr -d ' ')
+            
+            log_success "Copied $_count templates to: $_project_templates"
+            log_info ""
+            log_info "Next steps:"
+            log_info "  1. Customize templates: vim $_project_templates/skills/opencode/..."
+            log_info "  2. Generate skills: aiassisted setup-skills"
+            log_info "  3. Commit to git: git add .aiassisted/templates/"
+            ;;
+        
+        sync)
+            _force=0
+            if [ "$2" = "--force" ]; then
+                _force=1
+            fi
+            
+            # Check if project templates exist
+            if [ ! -d "$_project_templates" ]; then
+                log_error "Project templates directory not found: $_project_templates"
+                log_info "Run 'aiassisted templates init' first to initialize templates"
+                return 1
+            fi
+            
+            # Check if global templates exist
+            if [ ! -d "$_global_templates" ]; then
+                log_error "Global templates not found: $_global_templates"
+                log_info "Run the installer again to download templates"
+                return 1
+            fi
+            
+            # Show what would be updated
+            log_info "Comparing project templates with global templates..."
+            printf "\n"
+            
+            # Check for changes (avoid subshell issue)
+            _changes_output=$(find "$_global_templates" -name "*.template" -type f 2>/dev/null | while read -r _global_file; do
+                # shellcheck disable=SC2295  # Intentional pattern substitution
+                _rel_path="${_global_file#$_global_templates/}"
+                _project_file="$_project_templates/$_rel_path"
+                
+                if [ ! -f "$_project_file" ]; then
+                    printf "  + %s (new)\n" "$_rel_path"
+                elif ! cmp -s "$_global_file" "$_project_file"; then
+                    printf "  ~ %s (modified)\n" "$_rel_path"
+                fi
+            done)
+            
+            if [ -z "$_changes_output" ]; then
+                log_success "Project templates are up to date"
+                return 0
+            fi
+            
+            # Display changes with colors
+            echo "$_changes_output" | while read -r _line; do
+                if echo "$_line" | grep -q "^  + "; then
+                    _rel=$(echo "$_line" | sed 's/^  + //' | sed 's/ (new)$//')
+                    printf "  %s+ %s%s (new)\n" "$COLOR_GREEN" "$_rel" "$COLOR_RESET"
+                elif echo "$_line" | grep -q "^  ~ "; then
+                    _rel=$(echo "$_line" | sed 's/^  ~ //' | sed 's/ (modified)$//')
+                    printf "  %s~ %s%s (modified)\n" "$COLOR_YELLOW" "$_rel" "$COLOR_RESET"
+                fi
+            done
+            
+            printf "\n"
+            
+            if [ $_force -eq 0 ]; then
+                log_warn "This will overwrite your custom templates"
+                printf "Continue? [y/N]: "
+                read -r _response
+                case "$_response" in
+                    [yY]|[yY][eE][sS])
+                        log_info "Syncing templates..."
+                        ;;
+                    *)
+                        log_info "Cancelled"
+                        return 0
+                        ;;
+                esac
+            fi
+            
+            # Sync templates
+            if ! cp -r "$_global_templates"/* "$_project_templates"/; then
+                log_error "Failed to sync templates"
+                return 1
+            fi
+            
+            log_success "Templates synced from global"
+            ;;
+        
+        path)
+            printf "Global:  %s\n" "$_global_templates"
+            printf "Project: %s\n" "$_project_templates"
+            ;;
+        
+        diff)
+            _template_path="$2"
+            
+            if [ -z "$_template_path" ]; then
+                # Show all diffs
+                log_info "Comparing all templates..."
+                find "$_global_templates" -name "*.template" -type f 2>/dev/null | while read -r _global_file; do
+                    # shellcheck disable=SC2295  # Intentional pattern substitution
+                    _rel_path="${_global_file#$_global_templates/}"
+                    _project_file="$_project_templates/$_rel_path"
+                    
+                    if [ -f "$_project_file" ]; then
+                        if ! cmp -s "$_global_file" "$_project_file"; then
+                            printf "\n%s%s=== %s ===%s\n" "$COLOR_BOLD" "$COLOR_BLUE" "$_rel_path" "$COLOR_RESET"
+                            diff -u "$_global_file" "$_project_file" || true
+                        fi
+                    fi
+                done
+            else
+                # Show specific template diff
+                _global_file="$_global_templates/$_template_path"
+                _project_file="$_project_templates/$_template_path"
+                
+                if [ ! -f "$_global_file" ]; then
+                    log_error "Global template not found: $_template_path"
+                    return 1
+                fi
+                
+                if [ ! -f "$_project_file" ]; then
+                    log_error "Project template not found: $_template_path"
+                    log_info "Run 'aiassisted templates init' first"
+                    return 1
+                fi
+                
+                diff -u "$_global_file" "$_project_file" || true
+            fi
+            ;;
+        
+        *)
+            log_error "Unknown templates subcommand: $_subcommand"
+            log_info "Available subcommands: list, show, init, sync, path, diff"
+            log_info ""
+            log_info "Examples:"
+            log_info "  aiassisted templates list                                      # List all templates"
+            log_info "  aiassisted templates show skills/opencode/git-commit.SKILL.md.template"
+            log_info "  aiassisted templates init                                      # Copy to project"
+            log_info "  aiassisted templates sync                                      # Update from global"
+            log_info "  aiassisted templates diff                                      # Show differences"
+            return 1
+            ;;
+    esac
+}
+
 cmd_help() {
     cat <<'EOF'
 aiassisted - AI-Assisted Engineering Guidelines Installer
@@ -1348,6 +1614,7 @@ Commands:
   update [--force] [--path=DIR]     Update existing .aiassisted installation
   check [--path=DIR]                Check if updates are available
   setup-skills [--tool=TOOL]        Setup AI agent skills (opencode, claude, or auto)
+  templates <subcommand>            Manage templates (list, show, init, sync, path, diff)
   config <subcommand>               Manage configuration (show, get, edit, reset, path)
   version                           Show CLI version
   self-update                       Update the aiassisted CLI itself
@@ -1386,6 +1653,11 @@ Examples:
 
   # Preview what would be created
   aiassisted setup-skills --dry-run
+
+  # Manage templates
+  aiassisted templates list          # List all templates
+  aiassisted templates init          # Copy to project for customization
+  aiassisted templates sync          # Update from global
 
   # Manage configuration
   aiassisted config show                 # View current config
@@ -1434,6 +1706,9 @@ main() {
             ;;
         setup-skills)
             cmd_setup_skills "$@"
+            ;;
+        templates)
+            cmd_templates "$@"
             ;;
         config)
             cmd_config "$@"
