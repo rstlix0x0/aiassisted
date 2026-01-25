@@ -124,6 +124,36 @@ is_writable() {
     [ -w "$1" ] || [ ! -e "$1" ]
 }
 
+# Get value from TOML configuration file
+# Usage: toml_get <file> <key> [default]
+# Example: toml_get ~/.aiassisted/config.toml "default_runtime" "auto"
+toml_get() {
+    _file="$1"
+    _key="$2"
+    _default="${3:-}"
+    
+    if [ ! -f "$_file" ]; then
+        echo "$_default"
+        return 1
+    fi
+    
+    # Extract value for key (handles quotes, comments)
+    # Matches lines like: key = "value" or key = 'value' or key = value
+    # shellcheck disable=SC1087  # $_key is intentionally expanded in grep pattern
+    _value=$(grep -E "^[[:space:]]*$_key[[:space:]]*=" "$_file" 2>/dev/null | \
+             sed 's/^[^=]*=[[:space:]]*//; s/"//g; s/'"'"'//g; s/#.*//' | \
+             sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | \
+             head -n1)
+    
+    if [ -z "$_value" ]; then
+        echo "$_default"
+        return 1
+    else
+        echo "$_value"
+        return 0
+    fi
+}
+
 # Parse version file
 # Usage: parse_version_file <file> <key>
 parse_version_file() {
@@ -798,6 +828,41 @@ generate_arch_guidelines_list() {
     done
 }
 
+# Find template with cascading fallback
+# Usage: find_template <relative_path> <project_root>
+# Example: find_template "skills/opencode/git-commit.SKILL.md.template" "/path/to/project"
+# Returns: Full path to template file
+# Exit code: 0 if found, 1 if not found
+find_template() {
+    _relative_path="$1"
+    _project_root="$2"
+    _project_template="$_project_root/.aiassisted/templates/$_relative_path"
+    _global_template="$HOME/.aiassisted/templates/$_relative_path"
+    
+    log_debug "Looking for template: $_relative_path"
+    
+    # Priority 1: Project-specific template
+    if [ -f "$_project_template" ]; then
+        log_debug "Using project template: $_project_template"
+        echo "$_project_template"
+        return 0
+    fi
+    
+    # Priority 2: Global template
+    if [ -f "$_global_template" ]; then
+        log_debug "Using global template: $_global_template"
+        echo "$_global_template"
+        return 0
+    fi
+    
+    # Not found
+    log_error "Template not found: $_relative_path"
+    log_error "Searched:"
+    log_error "  - $_project_template (project)"
+    log_error "  - $_global_template (global)"
+    return 1
+}
+
 # Substitute template variables
 # Usage: substitute_template <template_file> <output_file> <project_root> <rust_list> <arch_list>
 substitute_template() {
@@ -857,8 +922,7 @@ substitute_template_simple() {
 # Setup OpenCode skills and agents
 setup_opencode_skills() {
     _project_root="$1"
-    _templates_dir="$2"
-    _dry_run="$3"
+    _dry_run="$2"
     
     log_info "Setting up OpenCode skills and agents..."
     
@@ -878,54 +942,74 @@ setup_opencode_skills() {
     
     # Setup git-commit skill
     log_debug "Creating git-commit skill..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/skills/opencode/git-commit.SKILL.md.template" \
-            "$_opencode_dir/skills/git-commit/SKILL.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "skills/opencode/git-commit.SKILL.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/skills/git-commit/SKILL.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/skills/git-commit/SKILL.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .opencode/skills/git-commit/SKILL.md"
+        log_warn "Skipping git-commit skill (template not found)"
     fi
     
     # Setup review-rust skill
     log_debug "Creating review-rust skill..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/skills/opencode/review-rust.SKILL.md.template" \
-            "$_opencode_dir/skills/review-rust/SKILL.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "skills/opencode/review-rust.SKILL.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/skills/review-rust/SKILL.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/skills/review-rust/SKILL.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .opencode/skills/review-rust/SKILL.md"
+        log_warn "Skipping review-rust skill (template not found)"
     fi
     
     # Setup ai-knowledge-rust agent
     log_debug "Creating ai-knowledge-rust agent..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/agents/opencode/ai-knowledge-rust.AGENT.md.template" \
-            "$_opencode_dir/agents/ai-knowledge-rust/AGENT.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "agents/opencode/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/agents/ai-knowledge-rust/AGENT.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/agents/ai-knowledge-rust/AGENT.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .opencode/agents/ai-knowledge-rust/AGENT.md"
+        log_warn "Skipping ai-knowledge-rust agent (template not found)"
     fi
     
     # Setup ai-knowledge-architecture agent
     log_debug "Creating ai-knowledge-architecture agent..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/agents/opencode/ai-knowledge-architecture.AGENT.md.template" \
-            "$_opencode_dir/agents/ai-knowledge-architecture/AGENT.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "agents/opencode/ai-knowledge-architecture.AGENT.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_opencode_dir/agents/ai-knowledge-architecture/AGENT.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .opencode/agents/ai-knowledge-architecture/AGENT.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .opencode/agents/ai-knowledge-architecture/AGENT.md"
+        log_warn "Skipping ai-knowledge-architecture agent (template not found)"
     fi
     
     if [ "$_dry_run" -eq 0 ]; then
@@ -938,8 +1022,7 @@ setup_opencode_skills() {
 # Setup Claude Code skills and agents
 setup_claude_skills() {
     _project_root="$1"
-    _templates_dir="$2"
-    _dry_run="$3"
+    _dry_run="$2"
     
     log_info "Setting up Claude Code skills and agents..."
     
@@ -959,54 +1042,74 @@ setup_claude_skills() {
     
     # Setup git-commit skill
     log_debug "Creating git-commit skill..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/skills/claude/git-commit.SKILL.md.template" \
-            "$_claude_dir/skills/git-commit/SKILL.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "skills/claude/git-commit.SKILL.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_claude_dir/skills/git-commit/SKILL.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .claude/skills/git-commit/SKILL.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .claude/skills/git-commit/SKILL.md"
+        log_warn "Skipping git-commit skill (template not found)"
     fi
     
     # Setup review-rust skill
     log_debug "Creating review-rust skill..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/skills/claude/review-rust.SKILL.md.template" \
-            "$_claude_dir/skills/review-rust/SKILL.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "skills/claude/review-rust.SKILL.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_claude_dir/skills/review-rust/SKILL.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .claude/skills/review-rust/SKILL.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .claude/skills/review-rust/SKILL.md"
+        log_warn "Skipping review-rust skill (template not found)"
     fi
     
     # Setup ai-knowledge-rust agent
     log_debug "Creating ai-knowledge-rust agent..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/agents/claude/ai-knowledge-rust.AGENT.md.template" \
-            "$_claude_dir/agents/ai-knowledge-rust/AGENT.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "agents/claude/ai-knowledge-rust.AGENT.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_claude_dir/agents/ai-knowledge-rust/AGENT.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .claude/agents/ai-knowledge-rust/AGENT.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .claude/agents/ai-knowledge-rust/AGENT.md"
+        log_warn "Skipping ai-knowledge-rust agent (template not found)"
     fi
     
     # Setup ai-knowledge-architecture agent
     log_debug "Creating ai-knowledge-architecture agent..."
-    if [ "$_dry_run" -eq 0 ]; then
-        substitute_template_simple \
-            "$_templates_dir/agents/claude/ai-knowledge-architecture.AGENT.md.template" \
-            "$_claude_dir/agents/ai-knowledge-architecture/AGENT.md" \
-            "$_project_root" \
-            "$_rust_list" \
-            "$_arch_list"
+    if _template_path=$(find_template "agents/claude/ai-knowledge-architecture.AGENT.md.template" "$_project_root"); then
+        if [ "$_dry_run" -eq 0 ]; then
+            substitute_template_simple \
+                "$_template_path" \
+                "$_claude_dir/agents/ai-knowledge-architecture/AGENT.md" \
+                "$_project_root" \
+                "$_rust_list" \
+                "$_arch_list"
+        else
+            echo "  Would create: .claude/agents/ai-knowledge-architecture/AGENT.md"
+            echo "    from: $_template_path"
+        fi
     else
-        echo "  Would create: .claude/agents/ai-knowledge-architecture/AGENT.md"
+        log_warn "Skipping ai-knowledge-architecture agent (template not found)"
     fi
     
     if [ "$_dry_run" -eq 0 ]; then
@@ -1040,27 +1143,25 @@ cmd_setup_skills() {
     
     log_info "Project root: $_project_root"
     
-    # Get script directory (where templates are located)
-    # We need to find where this script is running from
-    _script_path="$0"
-    if [ -L "$_script_path" ]; then
-        _script_path=$(readlink "$_script_path")
-    fi
-    _script_dir=$(cd "$(dirname "$_script_path")/../.." && pwd)
-    _templates_dir="$_script_dir/templates"
-    
-    if [ ! -d "$_templates_dir" ]; then
-        log_error "Templates directory not found: $_templates_dir"
-        log_info "This command must be run from an installed aiassisted CLI"
-        exit 1
-    fi
-    
-    log_debug "Templates directory: $_templates_dir"
-    
     # Check .aiassisted directory exists
     if [ ! -d "$_project_root/.aiassisted" ]; then
         log_error ".aiassisted directory not found in project root"
         log_info "Run 'aiassisted install' first to set up the project"
+        exit 1
+    fi
+    
+    # Verify at least one template source exists (project or global)
+    _has_templates=0
+    if [ -d "$_project_root/.aiassisted/templates" ] || [ -d "$HOME/.aiassisted/templates" ]; then
+        _has_templates=1
+    fi
+    
+    if [ $_has_templates -eq 0 ]; then
+        log_error "No templates found"
+        log_error "Templates should be in:"
+        log_error "  - $_project_root/.aiassisted/templates/ (project)"
+        log_error "  - $HOME/.aiassisted/templates/ (global)"
+        log_info "Run the installer again to download templates"
         exit 1
     fi
     
@@ -1126,31 +1227,113 @@ cmd_setup_skills() {
     
     # Setup OpenCode
     if [ $_setup_opencode -eq 1 ]; then
-        setup_opencode_skills "$_project_root" "$_templates_dir" "$_dry_run"
+        setup_opencode_skills "$_project_root" "$_dry_run"
     fi
     
     # Setup Claude Code
     if [ $_setup_claude -eq 1 ]; then
-        setup_claude_skills "$_project_root" "$_templates_dir" "$_dry_run"
+        setup_claude_skills "$_project_root" "$_dry_run"
     fi
     
-    if [ $_dry_run -eq 1 ]; then
+    if [ "$_dry_run" -eq 1 ]; then
         printf "\n%sRun without --dry-run to create these files%s\n\n" "$COLOR_YELLOW" "$COLOR_RESET"
     else
         printf "\n%s%sSetup complete!%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
         
-        if [ $_setup_opencode -eq 1 ]; then
+        if [ "$_setup_opencode" -eq 1 ]; then
             printf "OpenCode skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
             printf "OpenCode agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
-        if [ $_setup_claude -eq 1 ]; then
+        if [ "$_setup_claude" -eq 1 ]; then
             printf "Claude Code skills: %s/git-commit%s, %s/review-rust%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
             printf "Claude Code agents: %sai-knowledge-rust%s, %sai-knowledge-architecture%s\n" "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_RESET"
         fi
         
         printf "\n"
     fi
+}
+
+# Config command
+# Usage: aiassisted config <subcommand> [args]
+cmd_config() {
+    _subcommand="${1:-show}"
+    _config_file="$HOME/.aiassisted/config.toml"
+    
+    case "$_subcommand" in
+        show)
+            if [ -f "$_config_file" ]; then
+                cat "$_config_file"
+            else
+                log_error "Configuration file not found: $_config_file"
+                log_info "Run the installer to create default configuration"
+                return 1
+            fi
+            ;;
+        get)
+            _key="$2"
+            if [ -z "$_key" ]; then
+                log_error "Usage: aiassisted config get <key>"
+                log_info "Example: aiassisted config get default_runtime"
+                return 1
+            fi
+            if _value=$(toml_get "$_config_file" "$_key"); then
+                echo "$_value"
+            else
+                log_error "Key not found: $_key"
+                return 1
+            fi
+            ;;
+        edit)
+            if [ ! -f "$_config_file" ]; then
+                log_error "Configuration file not found: $_config_file"
+                log_info "Run the installer to create default configuration"
+                return 1
+            fi
+            ${EDITOR:-vi} "$_config_file"
+            log_success "Configuration edited"
+            ;;
+        reset)
+            log_warn "This will reset your configuration to defaults."
+            printf "Continue? [y/N]: "
+            read -r _response
+            case "$_response" in
+                [yY]|[yY][eE][sS])
+                    _config_dir="$HOME/.aiassisted"
+                    _temp_config=$(mktemp)
+                    
+                    # Download default config
+                    if download_file "${GITHUB_RAW_URL}/.aiassisted/config/config.toml.default" "$_temp_config"; then
+                        mv "$_temp_config" "$_config_file"
+                        log_success "Configuration reset to defaults"
+                    else
+                        log_error "Failed to download default configuration"
+                        rm -f "$_temp_config"
+                        return 1
+                    fi
+                    ;;
+                *)
+                    log_info "Reset cancelled"
+                    return 0
+                    ;;
+            esac
+            ;;
+        path)
+            echo "$_config_file"
+            ;;
+        *)
+            log_error "Unknown config subcommand: $_subcommand"
+            log_info "Available subcommands: show, get, edit, reset, path"
+            log_info ""
+            log_info "Examples:"
+            log_info "  aiassisted config show              # View configuration"
+            log_info "  aiassisted config get default_runtime"
+            log_info "  aiassisted config edit              # Edit in \$EDITOR"
+            log_info "  aiassisted config reset             # Reset to defaults"
+            log_info "  aiassisted config path              # Show config file path"
+            return 1
+            ;;
+    esac
 }
 
 cmd_help() {
@@ -1165,6 +1348,7 @@ Commands:
   update [--force] [--path=DIR]     Update existing .aiassisted installation
   check [--path=DIR]                Check if updates are available
   setup-skills [--tool=TOOL]        Setup AI agent skills (opencode, claude, or auto)
+  config <subcommand>               Manage configuration (show, get, edit, reset, path)
   version                           Show CLI version
   self-update                       Update the aiassisted CLI itself
   help                              Show this help message
@@ -1202,6 +1386,11 @@ Examples:
 
   # Preview what would be created
   aiassisted setup-skills --dry-run
+
+  # Manage configuration
+  aiassisted config show                 # View current config
+  aiassisted config get default_runtime  # Get specific value
+  aiassisted config edit                 # Edit in $EDITOR
 
   # Update CLI tool itself
   aiassisted self-update
@@ -1245,6 +1434,9 @@ main() {
             ;;
         setup-skills)
             cmd_setup_skills "$@"
+            ;;
+        config)
+            cmd_config "$@"
             ;;
         version)
             cmd_version

@@ -99,6 +99,79 @@ This creates:
 
 All skills and agents reference `.aiassisted/` files directly, so updates propagate automatically without needing to sync.
 
+### Configuration Management
+
+The CLI stores user preferences in `~/.aiassisted/config.toml`:
+
+```bash
+# View current configuration
+aiassisted config show
+
+# Get specific value
+aiassisted config get default_runtime
+
+# Edit configuration in $EDITOR
+aiassisted config edit
+
+# Reset to defaults
+aiassisted config reset
+
+# Show config file path
+aiassisted config path
+```
+
+#### Configuration Options
+
+The config file (`~/.aiassisted/config.toml`) supports these settings:
+
+```toml
+[general]
+default_runtime = "auto"    # Runtime: shell, python, bun, or auto
+verbosity = 1               # 0=quiet, 1=normal, 2=verbose
+
+[install]
+auto_update = true          # Check for updates on install
+confirm_before_install = false
+
+[templates]
+prefer_project = true       # Use ./.aiassisted/templates/ over global
+
+[skills]
+tools = []                  # AI tools to setup (empty = auto-detect)
+auto_setup = false          # Auto-run setup-skills after install
+
+[github]
+repo = "rstlix0x0/aiassisted"  # Source repository
+ref = ""                       # Branch/tag (empty = latest)
+```
+
+See `.aiassisted/config/README.md` for detailed documentation.
+
+#### Template Customization
+
+Templates are resolved with cascading priority:
+
+1. **Project templates** (`./.aiassisted/templates/`) - Custom per-project
+2. **Global templates** (`~/.aiassisted/templates/`) - Default templates
+
+To customize templates for a specific project:
+
+```bash
+# Copy global templates to project
+mkdir -p .aiassisted/templates
+cp -r ~/.aiassisted/templates/* .aiassisted/templates/
+
+# Edit templates
+vim .aiassisted/templates/skills/opencode/git-commit.SKILL.md.template
+
+# Regenerate skills with custom templates
+aiassisted setup-skills
+
+# Commit custom templates to share with team
+git add .aiassisted/templates/
+git commit -m "feat: add custom AI skill templates"
+```
+
 ### View Help
 
 Show all available commands:
@@ -114,6 +187,7 @@ aiassisted help
 | `update` | Update existing installation | `--force`, `--path=DIR`, `--verbose`, `--quiet`, `--runtime=<shell\|python\|bun>` |
 | `check` | Check if updates available | `--path=DIR`, `--runtime=<shell\|python\|bun>` |
 | `setup-skills` | Setup AI agent skills | `--tool=<opencode\|claude\|auto>`, `--dry-run`, `--runtime=shell` |
+| `config <subcommand>` | Manage configuration | `show`, `get <key>`, `edit`, `reset`, `path` |
 | `version` | Show CLI version | `--runtime=<shell\|python\|bun>` |
 | `self-update` | Update the CLI tool | - |
 | `runtime list` | Show available runtimes | - |

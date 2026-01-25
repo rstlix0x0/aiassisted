@@ -236,6 +236,74 @@ install_cli() {
     fi
 }
 
+setup_global_config() {
+    _config_dir="$HOME/.aiassisted"
+    _config_file="$_config_dir/config.toml"
+    _templates_dir="$_config_dir/templates"
+    _data_dir="$HOME/.local/share/aiassisted/.aiassisted"
+    
+    log_info "Setting up global configuration directory at $_config_dir"
+    
+    # Create directories
+    if ! mkdir -p "$_config_dir" "$_templates_dir" "$_config_dir/cache" "$_config_dir/state"; then
+        log_error "Failed to create global configuration directory"
+        exit 1
+    fi
+    
+    # Download default config.toml if not exists
+    if [ ! -f "$_config_file" ]; then
+        log_info "Creating default configuration file..."
+        _temp_config=$(mktemp)
+        
+        if download_file "${GITHUB_RAW_URL}/.aiassisted/config/config.toml.default" "$_temp_config"; then
+            mv "$_temp_config" "$_config_file"
+            log_success "Created configuration file: $_config_file"
+        else
+            log_warn "Failed to download config template, creating minimal config"
+            rm -f "$_temp_config"
+            # Create minimal config as fallback
+            cat > "$_config_file" << 'EOF'
+# aiassisted CLI Configuration
+[general]
+default_runtime = "auto"
+verbosity = 1
+
+[install]
+auto_update = true
+
+[templates]
+prefer_project = true
+EOF
+            log_success "Created minimal configuration file: $_config_file"
+        fi
+    else
+        log_info "Configuration file already exists: $_config_file"
+    fi
+    
+    log_success "Global configuration setup complete"
+}
+
+sync_global_templates() {
+    _data_dir="$HOME/.local/share/aiassisted/.aiassisted"
+    _templates_src="$_data_dir/templates"
+    _templates_dst="$HOME/.aiassisted/templates"
+    
+    # Check if templates source exists (from aiassisted install)
+    if [ ! -d "$_templates_src" ]; then
+        log_info "Templates will be available after first 'aiassisted install'"
+        return 0
+    fi
+    
+    log_info "Syncing templates to global directory..."
+    
+    # Copy templates to global directory
+    if cp -r "$_templates_src"/* "$_templates_dst/"; then
+        log_success "Templates synced to $_templates_dst"
+    else
+        log_warn "Failed to sync templates (this is OK for first install)"
+    fi
+}
+
 install_aiassisted_dir() {
     log_info "Installing .aiassisted directory to current directory"
     
@@ -244,6 +312,9 @@ install_aiassisted_dir() {
         log_error "Failed to install .aiassisted directory"
         exit 1
     fi
+    
+    # After install, sync templates to global directory
+    sync_global_templates
 }
 
 ###########################################
@@ -258,6 +329,11 @@ main() {
     
     printf "\n"
     
+    # Setup global configuration
+    setup_global_config
+    
+    printf "\n"
+    
     # Install .aiassisted directory
     install_aiassisted_dir
     
@@ -267,7 +343,8 @@ main() {
     printf "\n%s%sNext Steps:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
     printf "  1. Restart your terminal or run: %ssource %s%s\n" "$COLOR_BOLD" "$(get_shell_rc_file)" "$COLOR_RESET"
     printf "  2. Use %saiassisted help%s to see all available commands\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  3. Run %saiassisted check%s to check for updates\n\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  3. Run %saiassisted setup-skills%s to setup AI coding tools\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  4. Edit config: %saiassisted config edit%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
 }
 
 # Run main function
