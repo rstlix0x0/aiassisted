@@ -21,4 +21,4 @@ pub mod templates;
 pub mod types;
 
 // Re-export commonly used types for convenience
-pub use types::{AppConfig, Error, ManifestEntry, ReleaseInfo, Result, ToolType};
+pub use types::ToolType;

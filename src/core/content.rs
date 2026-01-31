@@ -11,6 +11,7 @@ use super::types::{ManifestEntry, Result};
 
 /// Abstraction for loading and saving manifests.
 #[async_trait]
+#[allow(dead_code)] // Used in Phase 3 (content domain)
 pub trait ManifestStore: Send + Sync {
     /// Load manifest from a local path.
     async fn load_local(&self, path: &Path) -> Result<Vec<ManifestEntry>>;
@@ -24,6 +25,7 @@ pub trait ManifestStore: Send + Sync {
 
 /// Abstraction for downloading content files.
 #[async_trait]
+#[allow(dead_code)] // Used in Phase 3 (content domain)
 pub trait ContentDownloader: Send + Sync {
     /// Download a single file and return its content.
     ///

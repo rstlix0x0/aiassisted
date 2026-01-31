@@ -10,6 +10,7 @@ use super::types::{ReleaseInfo, Result};
 
 /// Abstraction for checking and downloading releases.
 #[async_trait]
+#[allow(dead_code)] // Used in Phase 6 (self-update domain)
 pub trait ReleaseProvider: Send + Sync {
     /// Get the latest release information.
     async fn get_latest(&self) -> Result<ReleaseInfo>;

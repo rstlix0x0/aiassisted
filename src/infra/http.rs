@@ -12,6 +12,7 @@ use crate::core::types::{Error, Result};
 /// HTTP client implementation using reqwest.
 #[derive(Debug, Clone)]
 pub struct ReqwestClient {
+    #[allow(dead_code)] // Used in trait implementation methods
     client: reqwest::Client,
 }
 

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Result type alias for the application.
+#[allow(dead_code)] // Used in Phase 3 (content domain)
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Common error type for the application.
@@ -15,24 +16,30 @@ pub enum Error {
     Io(#[from] std::io::Error),
 
     #[error("Network error: {0}")]
+    #[allow(dead_code)] // Used in Phase 3 (HTTP downloads)
     Network(String),
 
     #[error("Checksum mismatch: expected {expected}, got {actual}")]
+    #[allow(dead_code)] // Used in Phase 3 (manifest verification)
     ChecksumMismatch { expected: String, actual: String },
 
     #[error("Configuration error: {0}")]
+    #[allow(dead_code)] // Used in Phase 5 (config domain)
     Config(String),
 
     #[error("Template error: {0}")]
+    #[allow(dead_code)] // Used in Phase 4 (templates domain)
     Template(String),
 
     #[error("Not found: {0}")]
+    #[allow(dead_code)] // Used in Phase 3 (file not found)
     NotFound(String),
 
     #[error("Parse error: {0}")]
     Parse(String),
 
     #[error("Serialization error: {0}")]
+    #[allow(dead_code)] // Used in Phase 3 (manifest JSON parsing)
     Serialization(String),
 }
 
@@ -74,6 +81,7 @@ impl std::str::FromStr for ToolType {
 
 /// A manifest entry representing a file with its checksum.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)] // Used in Phase 3 (manifest parsing)
 pub struct ManifestEntry {
     /// Relative path to the file.
     pub path: PathBuf,
@@ -83,6 +91,7 @@ pub struct ManifestEntry {
 
 /// Application configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)] // Used in Phase 5 (config domain)
 pub struct AppConfig {
     /// Default AI tool to use.
     #[serde(default)]
@@ -98,10 +107,12 @@ pub struct AppConfig {
     pub prefer_project: bool,
 }
 
+#[allow(dead_code)] // Used in Phase 5 (config domain)
 fn default_verbosity() -> u8 {
     1
 }
 
+#[allow(dead_code)] // Used in Phase 5 (config domain)
 fn default_true() -> bool {
     true
 }
@@ -119,6 +130,7 @@ impl Default for AppConfig {
 
 /// Release information for self-update.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)] // Used in Phase 6 (self-update domain)
 pub struct ReleaseInfo {
     /// Version string (e.g., "1.0.0").
     pub version: String,
@@ -130,6 +142,7 @@ pub struct ReleaseInfo {
 
 /// Status of a file during update.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)] // Used in Phase 3 (update command)
 pub enum FileUpdateStatus {
     /// File is new (doesn't exist locally).
     New,

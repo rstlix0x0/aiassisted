@@ -8,6 +8,7 @@ use super::types::{AppConfig, Result};
 
 /// Abstraction for configuration persistence.
 #[async_trait]
+#[allow(dead_code)] // Used in Phase 5 (config domain)
 pub trait ConfigStore: Send + Sync {
     /// Load the application configuration.
     async fn load(&self) -> Result<AppConfig>;
