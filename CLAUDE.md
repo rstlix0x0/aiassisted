@@ -4,75 +4,114 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`aiassisted` is a POSIX-compliant shell CLI tool that embeds a `.aiassisted/` directory into projects. This directory contains curated guidelines, instructions, prompts, and templates that AI assistants can reference for consistent, context-aware assistance.
+`aiassisted` is a CLI tool that embeds a `.aiassisted/` directory into projects. This directory contains curated guidelines, instructions, prompts, and templates that AI assistants can reference for consistent, context-aware assistance.
 
-## Common Commands
+**Note:** This project is being rewritten from POSIX shell to Rust. See `plans/README.md` for progress.
+
+## Development Plans
+
+See `plans/` directory:
+- `plans/README.md` - Plan index and status
+- `plans/overview.md` - Architecture and policies
+- `plans/phase-*.md` - Individual phase plans
+
+## Common Commands (Rust)
 
 ### Development
 
 ```bash
-# Run all tests (syntax, CLI, installer, setup)
-make test
+# Check code compiles
+cargo check
 
-# Lint shell scripts (requires shellcheck)
-make lint
+# Run all tests
+cargo test
 
-# Update version and FILES.txt manifest after modifying .aiassisted/ content
-make update-version
+# Run the CLI
+cargo run -- --help
+cargo run -- version
+cargo run -- install
 
-# Show project status and file counts
-make status
+# Build release binary
+cargo build --release
 
-# Clean temporary files
-make clean
+# Lint with clippy
+cargo clippy
+
+# Format code
+cargo fmt
 ```
 
-### Testing Individual Components
+### Release (with cargo-dist)
 
 ```bash
-# Test CLI commands only
-make test-cli
-
-# Test installer syntax
-make test-installer
-
-# Test setup-skills and setup-agents
-make test-setup
-
-# Verify FILES.txt is current
-make verify-manifest
+# Tag a version and push to trigger release
+git tag "v0.1.0"
+git push --tags
 ```
 
-### CLI Usage (for testing)
-
-```bash
-# Run CLI directly from source
-./bin/aiassisted help
-./bin/aiassisted version
-./bin/aiassisted setup-skills --dry-run
-./bin/aiassisted setup-agents --dry-run
-```
-
-## Architecture
+## Architecture (Rust)
 
 ### Source Code Structure
 
-- `bin/aiassisted` - Entry point script, resolves symlinks and executes `src/shell/core.sh`
-- `src/shell/core.sh` - Main CLI implementation (all commands, template processing, config management)
-- `install.sh` - Standalone installer script for curl-pipe installation
-- `scripts/update-version.sh` - Regenerates `.aiassisted/.version` and `FILES.txt` manifest
+```
+src/
+├── main.rs          # Entry point, composition root
+├── cli.rs           # Clap CLI definitions
+├── core/            # All abstractions (traits, types)
+│   ├── types.rs     # Error, ToolType, Result, DTOs
+│   ├── infra.rs     # FileSystem, HttpClient, Checksum, Logger
+│   ├── content.rs   # ManifestStore, ContentDownloader
+│   ├── templates.rs # TemplateEngine, TemplateResolver
+│   ├── config.rs    # ConfigStore
+│   └── selfupdate.rs# ReleaseProvider
+├── infra/           # Shared infrastructure implementations
+│   ├── fs.rs        # StdFileSystem
+│   ├── http.rs      # ReqwestClient
+│   ├── checksum.rs  # Sha2Checksum
+│   └── logger.rs    # ColoredLogger
+├── content/         # Content domain (install, update, check)
+├── templates/       # Templates domain (setup-skills, setup-agents)
+├── config/          # Config domain
+└── selfupdate/      # Self-update domain
+```
 
 ### Key Design Decisions
 
-1. **Pure POSIX shell** - No bash-isms, works with sh/dash/ash. Only external dependency is `git`.
+1. **Domain-based modular monolith** - Organized by business domains, not technical layers.
 
-2. **Symlink-based installation** - CLI installs to `~/.aiassisted/source/aiassisted/` with symlink at `~/.local/bin/aiassisted`.
+2. **Dependency inversion** - Domains depend on `core/` traits, receive implementations via DI.
 
-3. **Template system** - Templates in `.aiassisted/templates/` are processed to generate skills/agents in `.opencode/` or `.claude/` directories.
+3. **Flat domain structure** - No nested api/domain/infrastructure inside domains.
 
-4. **Cascading template resolution** - Project templates (`./.aiassisted/templates/`) override global templates (`~/.aiassisted/templates/`).
+4. **cargo-dist for releases** - Automated cross-platform binary builds and GitHub Releases.
 
-5. **Checksum-based updates** - `FILES.txt` contains SHA256 hashes for efficient partial updates.
+## Rust Development Policies
+
+### 1. Zero Warning Policy
+
+All code must compile with zero warnings. Run:
+```bash
+cargo check 2>&1 | grep -c warning  # Must be 0
+```
+
+### 2. Static Dispatch Over Dynamic Dispatch
+
+Prefer generics over `dyn` traits:
+
+```rust
+// ❌ Avoid
+fn process(handler: &dyn Handler) { }
+
+// ✅ Prefer
+fn process<H: Handler>(handler: &H) { }
+```
+
+### 3. Minimal Arc Usage
+
+Only use `Arc` when concurrent shared ownership is required. For this CLI tool:
+- Commands run sequentially
+- No shared state between threads
+- Use owned values or references instead
 
 ## Content Organization
 
