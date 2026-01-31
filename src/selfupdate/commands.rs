@@ -216,12 +216,13 @@ impl SelfUpdateCommand {
             let old_binary = current_exe.with_extension("old");
             let _ = fs::remove_file(&old_binary); // Ignore if doesn't exist
 
-            fs::rename(&current_exe, &old_binary).map_err(|e| {
-                Error::Io(format!(
+            if let Err(e) = fs::rename(&current_exe, &old_binary) {
+                logger.error(&format!(
                     "Failed to rename old binary: {}. Try closing all instances of the program.",
                     e
-                ))
-            })?;
+                ));
+                return Err(Error::from(e));
+            }
 
             fs::copy(new_binary, &current_exe)
                 .map_err(Error::from)?;
