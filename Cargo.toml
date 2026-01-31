@@ -1,0 +1,49 @@
+[package]
+name = "aiassisted"
+version = "0.1.0"
+edition = "2024"
+authors = ["rstlix0x0"]
+description = "CLI tool for embedding AI assistant guidelines and templates into projects"
+license = "MIT"
+repository = "https://github.com/rstlix0x0/aiassisted"
+keywords = ["cli", "ai", "assistant", "guidelines", "templates"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# CLI parsing
+clap = { version = "4", features = ["derive", "cargo", "env"] }
+
+# Async runtime and HTTP
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["rustls-tls", "json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+# Cryptography
+sha2 = "0.10"
+
+# Terminal output
+colored = "2"
+
+# Utility
+dirs = "5"
+walkdir = "2"
+thiserror = "1"
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+mockall = "0.13"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

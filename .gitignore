@@ -45,3 +45,7 @@ test-*/
 
 # Custom Agent
 .opencode/
+
+# Added by cargo
+
+/target
