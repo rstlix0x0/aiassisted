@@ -28,7 +28,6 @@ pub fn get_value(config: &AppConfig, key: &str) -> Option<String> {
 }
 
 /// Sets a configuration value by key using dot notation.
-#[allow(dead_code)] // Used by TomlConfigStore
 pub fn set_value(config: &mut AppConfig, key: &str, value: &str) -> Result<()> {
     match key {
         "default_tool" => {

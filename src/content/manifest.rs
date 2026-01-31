@@ -38,7 +38,6 @@ impl Manifest {
     }
 
     /// Verify checksums of all files in the manifest.
-    #[allow(dead_code)] // Useful utility, may be used in future phases
     pub fn verify_checksums<C: Checksum, F: FileSystem>(
         &self,
         checksum: &C,
@@ -107,7 +106,6 @@ impl Manifest {
 pub struct ManifestDiff {
     pub new_files: Vec<ManifestEntry>,
     pub modified_files: Vec<ManifestEntry>,
-    #[allow(dead_code)] // May be useful for reporting in future
     pub unchanged_files: Vec<ManifestEntry>,
 }
 

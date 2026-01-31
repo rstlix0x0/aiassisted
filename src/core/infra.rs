@@ -11,7 +11,6 @@ use super::types::Result;
 
 /// Abstraction for file system operations.
 #[async_trait]
-#[allow(dead_code)] // Methods used in Phase 3 (content domain)
 pub trait FileSystem: Send + Sync {
     /// Read the contents of a file as a string.
     async fn read(&self, path: &Path) -> Result<String>;
@@ -52,7 +51,6 @@ pub trait FileSystem: Send + Sync {
 
 /// Abstraction for HTTP client operations.
 #[async_trait]
-#[allow(dead_code)] // Methods used in Phase 3 (content domain)
 pub trait HttpClient: Send + Sync {
     /// Perform a GET request and return the response body as a string.
     async fn get(&self, url: &str) -> Result<String>;
@@ -65,7 +63,6 @@ pub trait HttpClient: Send + Sync {
 }
 
 /// Abstraction for checksum operations.
-#[allow(dead_code)] // Methods used in Phase 3 (content domain)
 pub trait Checksum: Send + Sync {
     /// Calculate SHA256 checksum of content.
     fn sha256(&self, content: &[u8]) -> String;
@@ -83,14 +80,11 @@ pub trait Logger: Send + Sync {
     fn warn(&self, msg: &str);
 
     /// Log an error message.
-    #[allow(dead_code)] // Used in Phase 3 (error handling)
     fn error(&self, msg: &str);
 
     /// Log a debug message.
-    #[allow(dead_code)] // Used in Phase 3 (verbose mode)
     fn debug(&self, msg: &str);
 
     /// Log a success message.
-    #[allow(dead_code)] // Used in Phase 3 (install/update success)
     fn success(&self, msg: &str);
 }

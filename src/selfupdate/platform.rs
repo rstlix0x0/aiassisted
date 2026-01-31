@@ -45,7 +45,6 @@ impl Platform {
     }
 
     /// Check if the platform is supported.
-    #[allow(dead_code)] // May be useful for validation in future
     pub fn is_supported(&self) -> bool {
         matches!(
             (self.os.as_str(), self.arch.as_str()),

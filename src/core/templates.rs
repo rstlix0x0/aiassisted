@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use super::types::{Result, ToolType};
 
 /// Abstraction for template rendering.
-#[allow(dead_code)] // Used in Phase 4 (templates domain)
 pub trait TemplateEngine: Send + Sync {
     /// Render a template string with the given variables.
     ///
@@ -25,7 +24,6 @@ pub trait TemplateEngine: Send + Sync {
 /// Templates are resolved with cascading priority:
 /// 1. Project-specific templates (`./.aiassisted/templates/`)
 /// 2. Global templates (`~/.aiassisted/templates/`)
-#[allow(dead_code)] // Used in Phase 4 (templates domain)
 pub trait TemplateResolver: Send + Sync {
     /// Resolve a template by name for the given tool.
     ///

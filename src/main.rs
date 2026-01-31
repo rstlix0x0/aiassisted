@@ -1,5 +1,8 @@
 //! aiassisted CLI - Embed AI assistant guidelines and templates into projects.
 
+// Allow dead code in binary - library API is used by integration tests
+#![allow(dead_code)]
+
 use clap::Parser;
 
 mod cli;
@@ -36,11 +39,8 @@ where
     C: Checksum,
     L: Logger,
 {
-    #[allow(dead_code)] // Used in Phase 3 (content domain commands)
     fs: F,
-    #[allow(dead_code)] // Used in Phase 3 (content domain commands)
     http: H,
-    #[allow(dead_code)] // Used in Phase 3 (content domain commands)
     checksum: C,
     logger: L,
 }
