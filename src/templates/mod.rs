@@ -13,5 +13,3 @@ pub use commands::{
     ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand, ShowTemplateCommand,
     TemplatesDiffCommand, TemplatesInitCommand, TemplatesPathCommand, TemplatesSyncCommand,
 };
-pub use engine::SimpleTemplateEngine;
-pub use resolver::CascadingResolver;

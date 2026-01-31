@@ -33,6 +33,7 @@ impl<F: FileSystem> TomlConfigStore<F> {
     /// Create a new TOML config store with a custom path.
     ///
     /// Useful for testing or when you need a custom config file location.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn with_path(fs: F, config_path: PathBuf) -> Self {
         Self { fs, config_path }
     }

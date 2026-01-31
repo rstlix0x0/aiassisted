@@ -7,6 +7,7 @@ mod config;
 mod content;
 mod core;
 mod infra;
+mod selfupdate;
 mod templates;
 
 use cli::{Cli, Commands, ConfigCommands, TemplatesCommands};
@@ -18,6 +19,7 @@ use config::{
 use content::{CheckCommand, InstallCommand, UpdateCommand};
 use core::infra::{Checksum, FileSystem, HttpClient, Logger};
 use infra::{ColoredLogger, ReqwestClient, Sha2Checksum, StdFileSystem};
+use selfupdate::{GithubReleasesProvider, SelfUpdateCommand};
 use templates::{
     ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand, ShowTemplateCommand,
     TemplatesDiffCommand, TemplatesInitCommand, TemplatesPathCommand, TemplatesSyncCommand,
@@ -197,9 +199,9 @@ async fn main() {
         .await,
 
         Commands::SelfUpdate => {
-            ctx.logger.info("Checking for CLI updates...");
-            ctx.logger.warn("Self-update command not yet implemented");
-            Ok(())
+            let provider = GithubReleasesProvider::new(ctx.http);
+            let command = SelfUpdateCommand;
+            command.execute(&provider, &ctx.logger).await
         }
 
         Commands::Version => {
