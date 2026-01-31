@@ -3,14 +3,27 @@
 use clap::Parser;
 
 mod cli;
+mod config;
 mod content;
 mod core;
 mod infra;
+mod templates;
 
 use cli::{Cli, Commands, ConfigCommands, TemplatesCommands};
+use config::{
+    EditCommand as ConfigEditCommand, GetCommand as ConfigGetCommand,
+    PathCommand as ConfigPathCommand, ResetCommand as ConfigResetCommand,
+    ShowCommand as ConfigShowCommand, TomlConfigStore,
+};
 use content::{CheckCommand, InstallCommand, UpdateCommand};
 use core::infra::{Checksum, FileSystem, HttpClient, Logger};
 use infra::{ColoredLogger, ReqwestClient, Sha2Checksum, StdFileSystem};
+use templates::{
+    ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand, ShowTemplateCommand,
+    TemplatesDiffCommand, TemplatesInitCommand, TemplatesPathCommand, TemplatesSyncCommand,
+};
+use templates::engine::SimpleTemplateEngine;
+use templates::resolver::CascadingResolver;
 
 /// Application context holding all infrastructure dependencies.
 /// Uses static dispatch (generics) for zero-cost abstractions.
@@ -83,97 +96,105 @@ async fn main() {
 
         Commands::SetupSkills(args) => {
             let tool: core::ToolType = args.tool.into();
-            ctx.logger.info(&format!(
-                "Setting up skills for {}{}",
+            let cmd = SetupSkillsCommand {
                 tool,
-                if args.dry_run { " (dry run)" } else { "" }
-            ));
-            ctx.logger.warn("Setup-skills command not yet implemented");
-            Ok(())
+                dry_run: args.dry_run,
+            };
+
+            // Create template dependencies
+            let engine = SimpleTemplateEngine::new();
+            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+            let resolver = CascadingResolver::new(
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+                home_dir,
+            );
+            let project_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+            cmd.execute(&ctx.fs, &engine, &resolver, &ctx.logger, &project_path).await
         }
 
         Commands::SetupAgents(args) => {
             let tool: core::ToolType = args.tool.into();
-            ctx.logger.info(&format!(
-                "Setting up agents for {}{}",
+            let cmd = SetupAgentsCommand {
                 tool,
-                if args.dry_run { " (dry run)" } else { "" }
-            ));
-            ctx.logger.warn("Setup-agents command not yet implemented");
-            Ok(())
+                dry_run: args.dry_run,
+            };
+
+            // Create template dependencies
+            let engine = SimpleTemplateEngine::new();
+            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+            let resolver = CascadingResolver::new(
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+                home_dir,
+            );
+            let project_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+            cmd.execute(&ctx.fs, &engine, &resolver, &ctx.logger, &project_path).await
         }
 
-        Commands::Templates(args) => match args.command {
-            TemplatesCommands::List { tool } => {
-                let tool: core::ToolType = tool.into();
-                ctx.logger.info(&format!("Listing templates for {}", tool));
-                ctx.logger.warn("Templates list command not yet implemented");
-                Ok(())
-            }
-            TemplatesCommands::Show { path } => {
-                ctx.logger.info(&format!("Showing template: {}", path));
-                ctx.logger.warn("Templates show command not yet implemented");
-                Ok(())
-            }
-            TemplatesCommands::Init { force } => {
-                ctx.logger.info(&format!(
-                    "Initializing project templates{}",
-                    if force { " (forced)" } else { "" }
-                ));
-                ctx.logger.warn("Templates init command not yet implemented");
-                Ok(())
-            }
-            TemplatesCommands::Sync { force } => {
-                ctx.logger.info(&format!(
-                    "Syncing templates{}",
-                    if force { " (forced)" } else { "" }
-                ));
-                ctx.logger.warn("Templates sync command not yet implemented");
-                Ok(())
-            }
-            TemplatesCommands::Path => {
-                ctx.logger.info("Template paths:");
-                ctx.logger.warn("Templates path command not yet implemented");
-                Ok(())
-            }
-            TemplatesCommands::Diff { path } => {
-                if let Some(p) = path {
-                    ctx.logger.info(&format!("Diffing template: {}", p));
-                } else {
-                    ctx.logger.info("Diffing all templates");
-                }
-                ctx.logger.warn("Templates diff command not yet implemented");
-                Ok(())
-            }
-        },
+        Commands::Templates(args) => {
+            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+            let project_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+            let resolver = CascadingResolver::new(project_path.clone(), home_dir);
 
-        Commands::Config(args) => match args.command {
-            ConfigCommands::Show => {
-                ctx.logger.info("Current configuration:");
-                ctx.logger.warn("Config show command not yet implemented");
-                Ok(())
+            match args.command {
+                TemplatesCommands::List { tool } => {
+                    let tool: core::ToolType = tool.into();
+                    let cmd = ListTemplatesCommand { tool };
+                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
+                }
+                TemplatesCommands::Show { path } => {
+                    let cmd = ShowTemplateCommand { path };
+                    // Default to Claude for show command
+                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, core::ToolType::Claude).await
+                }
+                TemplatesCommands::Init { force } => {
+                    let cmd = TemplatesInitCommand { force };
+                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
+                }
+                TemplatesCommands::Sync { force } => {
+                    let cmd = TemplatesSyncCommand { force };
+                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
+                }
+                TemplatesCommands::Path => {
+                    let cmd = TemplatesPathCommand;
+                    cmd.execute(&resolver, &ctx.logger, &project_path).await
+                }
+                TemplatesCommands::Diff { path } => {
+                    let cmd = TemplatesDiffCommand { path };
+                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &ctx.checksum, &project_path).await
+                }
             }
-            ConfigCommands::Get { key } => {
-                ctx.logger.info(&format!("Getting config key: {}", key));
-                ctx.logger.warn("Config get command not yet implemented");
-                Ok(())
+        }
+
+        Commands::Config(args) => async {
+            // Create config store
+            let config_store = TomlConfigStore::new(StdFileSystem::new())?;
+
+            match args.command {
+                ConfigCommands::Show => {
+                    let cmd = ConfigShowCommand;
+                    cmd.execute(&config_store, &ctx.logger).await
+                }
+                ConfigCommands::Get { key } => {
+                    let cmd = ConfigGetCommand { key };
+                    cmd.execute(&config_store, &ctx.logger).await
+                }
+                ConfigCommands::Edit => {
+                    let cmd = ConfigEditCommand;
+                    cmd.execute(&config_store, &ctx.logger).await
+                }
+                ConfigCommands::Reset { force } => {
+                    let cmd = ConfigResetCommand { force };
+                    cmd.execute(&config_store, &ctx.logger).await
+                }
+                ConfigCommands::Path => {
+                    let cmd = ConfigPathCommand;
+                    cmd.execute(&config_store).await
+                }
             }
-            ConfigCommands::Edit => {
-                ctx.logger.info("Opening config in editor");
-                ctx.logger.warn("Config edit command not yet implemented");
-                Ok(())
-            }
-            ConfigCommands::Reset => {
-                ctx.logger.info("Resetting config to defaults");
-                ctx.logger.warn("Config reset command not yet implemented");
-                Ok(())
-            }
-            ConfigCommands::Path => {
-                ctx.logger.info("Config file path:");
-                ctx.logger.warn("Config path command not yet implemented");
-                Ok(())
-            }
-        },
+        }
+        .await,
 
         Commands::SelfUpdate => {
             ctx.logger.info("Checking for CLI updates...");

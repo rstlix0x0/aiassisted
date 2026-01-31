@@ -10,7 +10,7 @@ This directory contains the implementation plans for the `aiassisted` CLI rewrit
 | [phase-1-setup.md](./phase-1-setup.md) | Project setup & core abstractions | ✅ Complete |
 | [phase-2-cli.md](./phase-2-cli.md) | CLI structure & composition root | ✅ Complete |
 | [phase-3-content.md](./phase-3-content.md) | Content domain (install, update, check) | ✅ Complete |
-| [phase-4-templates.md](./phase-4-templates.md) | Templates domain (setup-skills, setup-agents) | 🔄 Next |
+| [phase-4-templates.md](./phase-4-templates.md) | Templates domain (setup-skills, setup-agents) | ✅ Complete |
 | [phase-5-config.md](./phase-5-config.md) | Config domain | Pending |
 | [phase-6-selfupdate.md](./phase-6-selfupdate.md) | Self-update domain | Pending |
 | [phase-7-distribution.md](./phase-7-distribution.md) | cargo-dist & release workflow | Pending |

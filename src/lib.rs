@@ -7,6 +7,8 @@
 pub mod core;
 pub mod infra;
 pub mod content;
+pub mod templates;
+pub mod config;
 
 // Re-export commonly used types
 pub use core::types::{Error, ManifestEntry, Result};

@@ -173,7 +173,11 @@ pub enum ConfigCommands {
     Edit,
 
     /// Reset configuration to defaults
-    Reset,
+    Reset {
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        force: bool,
+    },
 
     /// Show configuration file path
     Path,

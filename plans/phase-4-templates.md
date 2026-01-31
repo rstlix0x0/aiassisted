@@ -1,6 +1,6 @@
 # Phase 4: Templates Domain
 
-**Status:** Pending
+**Status:** Complete
 
 ## Objectives
 
@@ -10,18 +10,18 @@
 
 ## Tasks
 
-- [ ] Create `src/templates/` domain structure
-- [ ] Implement template variable substitution engine
-- [ ] Implement cascading resolution (project → global)
-- [ ] Implement `setup-skills` command
-- [ ] Implement `setup-agents` command
-- [ ] Implement `templates list` subcommand
-- [ ] Implement `templates show` subcommand
-- [ ] Implement `templates init` subcommand
-- [ ] Implement `templates sync` subcommand
-- [ ] Implement `templates path` subcommand
-- [ ] Implement `templates diff` subcommand
-- [ ] Add domain-specific tests
+- [x] Create `src/templates/` domain structure
+- [x] Implement template variable substitution engine
+- [x] Implement cascading resolution (project → global)
+- [x] Implement `setup-skills` command
+- [x] Implement `setup-agents` command
+- [x] Implement `templates list` subcommand
+- [x] Implement `templates show` subcommand
+- [x] Implement `templates init` subcommand
+- [x] Implement `templates sync` subcommand
+- [x] Implement `templates path` subcommand
+- [x] Implement `templates diff` subcommand
+- [x] Add domain-specific tests
 
 ## Domain Structure
 

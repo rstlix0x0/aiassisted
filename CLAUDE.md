@@ -389,3 +389,103 @@ The `.aiassisted/` directory contains:
 2. Run `make update-version` to regenerate manifest
 3. Run `make test` to verify
 4. Commit changes
+
+## Git Commit Policy
+
+This project follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification for all commit messages.
+
+### Commit Message Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Allowed Types
+
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+- **refactor**: A code change that neither fixes a bug nor adds a feature
+- **perf**: A code change that improves performance
+- **test**: Adding missing tests or correcting existing tests
+- **build**: Changes that affect the build system or external dependencies
+- **ci**: Changes to CI configuration files and scripts
+- **chore**: Other changes that don't modify src or test files
+- **revert**: Reverts a previous commit
+
+### Commit Rules
+
+1. **Subject Line**:
+   - Use the imperative mood ("add" not "added", "change" not "changed")
+   - No period at the end
+   - Keep it short (preferably under 50 chars, max 72)
+
+2. **Body** (Optional):
+   - Use the imperative mood
+   - Wrap lines at 72 characters
+   - Explain *what* and *why* vs. *how*
+
+3. **Footer** (Optional):
+   - Reference issues (e.g., `Closes #123`)
+   - Mention breaking changes
+
+4. **Breaking Changes**:
+   - Append a `!` after the type/scope, e.g., `feat!: ...` or `feat(api)!: ...`
+   - OR include a footer with `BREAKING CHANGE: <description>`
+
+### Commit Examples
+
+**Feature:**
+```
+feat(templates): add recursive directory copying for init command
+```
+
+**Bug Fix:**
+```
+fix(config): prevent panic when home directory is not found
+```
+
+**Breaking Change:**
+```
+feat(api)!: remove deprecated v1 endpoints
+
+BREAKING CHANGE: The /v1/* endpoints have been removed. Use /v2/* instead.
+```
+
+**Documentation:**
+```
+docs: update CLAUDE.md with git commit policy
+```
+
+**Tests:**
+```
+test(templates): add 81 comprehensive unit tests for templates domain
+```
+
+**Multiple Changes:**
+```
+feat(templates): complete placeholder implementations
+
+- Implement recursive copy for templates init
+- Add smart sync with modification time comparison
+- Implement SHA256-based diffing
+
+Closes #8
+```
+
+### When Committing
+
+Always include the co-authored-by tag when commits are made with AI assistance:
+
+```
+feat(domain): implement new feature
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+For detailed instructions, see `.aiassisted/instructions/conventional-commits.instructions.md`.

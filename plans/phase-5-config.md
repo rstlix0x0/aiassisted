@@ -1,6 +1,6 @@
 # Phase 5: Config Domain
 
-**Status:** Pending
+**Status:** Complete
 
 ## Objectives
 
@@ -9,15 +9,15 @@
 
 ## Tasks
 
-- [ ] Create `src/config/` domain structure
-- [ ] Implement TOML config file persistence
-- [ ] Implement config validation and defaults
-- [ ] Implement `config show` subcommand
-- [ ] Implement `config get` subcommand
-- [ ] Implement `config edit` subcommand
-- [ ] Implement `config reset` subcommand
-- [ ] Implement `config path` subcommand
-- [ ] Add domain-specific tests
+- [x] Create `src/config/` domain structure
+- [x] Implement TOML config file persistence
+- [x] Implement config validation and defaults
+- [x] Implement `config show` subcommand
+- [x] Implement `config get` subcommand
+- [x] Implement `config edit` subcommand
+- [x] Implement `config reset` subcommand
+- [x] Implement `config path` subcommand
+- [x] Add domain-specific tests
 
 ## Domain Structure
 

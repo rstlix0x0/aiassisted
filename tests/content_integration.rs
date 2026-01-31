@@ -3,7 +3,7 @@
 //! These tests verify that manifest loading, GitHub downloading, and sync
 //! operations work correctly together using real implementations.
 
-use aiassisted::core::infra::{Checksum, FileSystem, HttpClient, Logger};
+use aiassisted::core::infra::{Checksum, FileSystem, HttpClient};
 use aiassisted::core::types::ManifestEntry;
 use aiassisted::infra::{ReqwestClient, Sha2Checksum, StdFileSystem};
 use aiassisted::Manifest;
@@ -12,19 +12,6 @@ use tempfile::TempDir;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-// Simple test logger that stores messages
-#[derive(Debug, Clone, Default)]
-struct TestLogger {
-    // In a real implementation, you might store messages for verification
-}
-
-impl Logger for TestLogger {
-    fn info(&self, _msg: &str) {}
-    fn warn(&self, _msg: &str) {}
-    fn error(&self, _msg: &str) {}
-    fn debug(&self, _msg: &str) {}
-    fn success(&self, _msg: &str) {}
-}
 
 #[tokio::test]
 async fn test_manifest_load_save_roundtrip() {
