@@ -3,17 +3,17 @@
 //! These tests verify that template operations work correctly end-to-end
 //! using real implementations.
 
-use aiassisted::core::infra::{Checksum, FileSystem, Logger};
+use aiassisted::core::infra::{FileSystem, Logger};
 use aiassisted::core::templates::{TemplateEngine, TemplateResolver};
 use aiassisted::core::types::ToolType;
 use aiassisted::infra::{Sha2Checksum, StdFileSystem};
+use aiassisted::templates::engine::SimpleTemplateEngine;
+use aiassisted::templates::resolver::CascadingResolver;
 use aiassisted::templates::{
-    CascadingResolver, ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand,
-    ShowTemplateCommand, SimpleTemplateEngine, TemplatesDiffCommand, TemplatesInitCommand,
-    TemplatesPathCommand, TemplatesSyncCommand,
+    ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand, ShowTemplateCommand,
+    TemplatesDiffCommand, TemplatesInitCommand, TemplatesPathCommand, TemplatesSyncCommand,
 };
 use std::collections::HashMap;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 // Simple test logger
