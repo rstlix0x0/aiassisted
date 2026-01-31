@@ -1,6 +1,6 @@
 # Phase 6: Self-Update Domain
 
-**Status:** Pending
+**Status:** Complete
 
 ## Objectives
 
@@ -10,13 +10,13 @@
 
 ## Tasks
 
-- [ ] Create `src/selfupdate/` domain structure
-- [ ] Implement version comparison logic
-- [ ] Implement platform detection
-- [ ] Implement GitHub Releases API client
-- [ ] Implement binary download and replacement
-- [ ] Implement `self-update` command
-- [ ] Add domain-specific tests
+- [x] Create `src/selfupdate/` domain structure
+- [x] Implement version comparison logic
+- [x] Implement platform detection
+- [x] Implement GitHub Releases API client
+- [x] Implement binary download and replacement
+- [x] Implement `self-update` command
+- [x] Add domain-specific tests
 
 ## Domain Structure
 

@@ -11,8 +11,8 @@ This directory contains the implementation plans for the `aiassisted` CLI rewrit
 | [phase-2-cli.md](./phase-2-cli.md) | CLI structure & composition root | ✅ Complete |
 | [phase-3-content.md](./phase-3-content.md) | Content domain (install, update, check) | ✅ Complete |
 | [phase-4-templates.md](./phase-4-templates.md) | Templates domain (setup-skills, setup-agents) | ✅ Complete |
-| [phase-5-config.md](./phase-5-config.md) | Config domain | Pending |
-| [phase-6-selfupdate.md](./phase-6-selfupdate.md) | Self-update domain | Pending |
+| [phase-5-config.md](./phase-5-config.md) | Config domain | ✅ Complete |
+| [phase-6-selfupdate.md](./phase-6-selfupdate.md) | Self-update domain | ✅ Complete |
 | [phase-7-distribution.md](./phase-7-distribution.md) | cargo-dist & release workflow | Pending |
 | [phase-8-polish.md](./phase-8-polish.md) | Documentation & integration tests | Pending |
 
@@ -24,8 +24,8 @@ cargo check
 cargo test
 cargo run -- --help
 
-# Next phase: Templates Domain
-# See phase-4-templates.md
+# Next phase: Distribution & Release
+# See phase-7-distribution.md
 ```
 
 ## Rust Development Policies
