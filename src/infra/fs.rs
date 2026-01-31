@@ -36,6 +36,7 @@ impl FileSystem for StdFileSystem {
         }
         let mut file = fs::File::create(path).await?;
         file.write_all(content.as_bytes()).await?;
+        file.flush().await?;
         Ok(())
     }
 
@@ -45,6 +46,7 @@ impl FileSystem for StdFileSystem {
         }
         let mut file = fs::File::create(path).await?;
         file.write_all(content).await?;
+        file.flush().await?;
         Ok(())
     }
 

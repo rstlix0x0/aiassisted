@@ -12,7 +12,6 @@ use crate::core::types::{Error, Result};
 /// HTTP client implementation using reqwest.
 #[derive(Debug, Clone)]
 pub struct ReqwestClient {
-    #[allow(dead_code)] // Used in trait implementation methods
     client: reqwest::Client,
 }
 
@@ -94,6 +93,7 @@ impl HttpClient for ReqwestClient {
 
         let mut file = File::create(dest).await?;
         file.write_all(&bytes).await?;
+        file.flush().await?;
         Ok(())
     }
 }
