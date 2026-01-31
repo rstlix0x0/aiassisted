@@ -239,14 +239,25 @@ check_prerequisites() {
         exit 1
     fi
 
-    # Check for tar
-    if ! command -v tar >/dev/null 2>&1; then
-        log_error "tar is required but not found"
-        printf "\n%sPlease install tar first:%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        exit 1
-    fi
-
-    log_success "tar found: $(tar --version 2>&1 | head -1 || echo 'tar')"
+    # Check for tar (Unix) or unzip (Windows)
+    case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
+        msys*|mingw*|cygwin*|windows*)
+            if ! command -v unzip >/dev/null 2>&1; then
+                log_error "unzip is required but not found"
+                printf "\n%sPlease install unzip first%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+                exit 1
+            fi
+            log_success "unzip found: $(unzip -v 2>&1 | head -1 || echo 'unzip')"
+            ;;
+        *)
+            if ! command -v tar >/dev/null 2>&1; then
+                log_error "tar is required but not found"
+                printf "\n%sPlease install tar first:%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+                exit 1
+            fi
+            log_success "tar found: $(tar --version 2>&1 | head -1 || echo 'tar')"
+            ;;
+    esac
 }
 
 ###########################################
@@ -284,7 +295,17 @@ install_binary() {
         DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}"
     fi
 
-    ARCHIVE_NAME="${BINARY_NAME}-${PLATFORM}.tar.gz"
+    # Determine archive format based on platform
+    if [ -n "$BINARY_EXT" ]; then
+        # Windows uses zip
+        ARCHIVE_EXT=".zip"
+        ARCHIVE_NAME="${BINARY_NAME}-${PLATFORM}.zip"
+    else
+        # Unix uses tar.xz
+        ARCHIVE_EXT=".tar.xz"
+        ARCHIVE_NAME="${BINARY_NAME}-${PLATFORM}.tar.xz"
+    fi
+
     DOWNLOAD_URL="${DOWNLOAD_URL}/${ARCHIVE_NAME}"
 
     log_info "Downloading from: $DOWNLOAD_URL"
@@ -309,10 +330,18 @@ install_binary() {
 
     # Extract archive
     log_info "Extracting binary..."
-    if ! tar -xzf "$TMP_ARCHIVE" -C "$TMP_DIR"; then
-        log_error "Failed to extract archive"
-        rm -rf "$TMP_DIR"
-        exit 1
+    if [ "$ARCHIVE_EXT" = ".zip" ]; then
+        if ! unzip -q "$TMP_ARCHIVE" -d "$TMP_DIR"; then
+            log_error "Failed to extract archive"
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
+    else
+        if ! tar -xJf "$TMP_ARCHIVE" -C "$TMP_DIR"; then
+            log_error "Failed to extract archive"
+            rm -rf "$TMP_DIR"
+            exit 1
+        fi
     fi
 
     # Find and move binary
