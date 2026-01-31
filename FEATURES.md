@@ -231,8 +231,21 @@ src/
 ## Summary
 
 **Total features implemented: 30+**
-**Test coverage: 231 tests**
+**Test coverage: 257 tests (215 unit + 42 integration)**
 **Code quality: Zero warnings, comprehensive error handling**
-**Release status: Pre-release tested (v0.1.0-rc.2)**
+**Release status: v0.1.1 (v0.1.0 retracted due to manifest.json issue)**
 
 All core functionality is complete and tested. The CLI is ready for production use.
+
+## Recent Fixes (v0.1.1)
+
+**Critical Fix:** Changed from FILES.txt to manifest.json format
+- Fixed HTTP 404 error when running install/update/check commands
+- Updated scripts/update-version.sh to generate manifest.json in JSON format
+- Updated Makefile to reference manifest.json
+- Added smoke-test.sh and quick-test.sh for end-to-end validation
+- Retracted v0.1.0 release due to this critical issue
+
+**Known Limitations:**
+- setup-skills/setup-agents require .aiassisted directory (run install first)
+- Global templates directory workflow needs documentation
