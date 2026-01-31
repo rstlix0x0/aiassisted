@@ -2,27 +2,33 @@
 #
 # aiassisted installer
 #
-# This script installs the aiassisted CLI tool by cloning the repository
-# to ~/.aiassisted/source/aiassisted and creating a symlink to ~/.local/bin.
+# This script installs the aiassisted CLI tool by downloading a pre-built
+# binary from GitHub releases and installing it to ~/.local/bin.
 #
 # Requirements:
-#   - git
+#   - curl or wget
+#   - tar
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/rstlix0x0/aiassisted/main/install.sh | sh
+#
+#   Or with custom version:
+#   VERSION=v0.1.0 curl -fsSL https://raw.githubusercontent.com/rstlix0x0/aiassisted/main/install.sh | sh
 #
 
 set -e
 
 # GitHub repository
 GITHUB_REPO="rstlix0x0/aiassisted"
-GITHUB_URL="https://github.com/${GITHUB_REPO}.git"
 
-# Installation directories
-AIASSISTED_HOME="$HOME/.aiassisted"
-SOURCE_DIR="$AIASSISTED_HOME/source/aiassisted"
+# Version to install (default: latest)
+VERSION="${VERSION:-latest}"
+
+# Installation directory
 BIN_DIR="$HOME/.local/bin"
-CLI_PATH="$BIN_DIR/aiassisted"
+
+# Binary name
+BINARY_NAME="aiassisted"
 
 # Color support detection
 if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
@@ -78,7 +84,7 @@ detect_shell() {
 # Get shell RC file path
 get_shell_rc_file() {
     _shell=$(detect_shell)
-    
+
     case "$_shell" in
         bash)
             if [ -f "$HOME/.bashrc" ]; then
@@ -112,10 +118,10 @@ get_shell_rc_file() {
 # Check if directory is in PATH
 is_in_path() {
     _dir="$1"
-    
+
     # Normalize path
     _dir=$(cd "$_dir" 2>/dev/null && pwd || echo "$_dir")
-    
+
     # Check each PATH entry
     _old_ifs="$IFS"
     IFS=":"
@@ -127,7 +133,7 @@ is_in_path() {
         fi
     done
     IFS="$_old_ifs"
-    
+
     return 1
 }
 
@@ -135,30 +141,78 @@ is_in_path() {
 add_to_path() {
     _dir="$1"
     _rc_file=$(get_shell_rc_file)
-    
+
     log_info "Adding $_dir to PATH in $_rc_file"
-    
+
     # Create RC file if it doesn't exist
     if [ ! -f "$_rc_file" ]; then
         touch "$_rc_file"
     fi
-    
+
     # Check if already added
     if grep -q "export PATH=\"\$PATH:$_dir\"" "$_rc_file" 2>/dev/null; then
         log_info "PATH already configured in $_rc_file"
         return 0
     fi
-    
+
     if grep -q "export PATH=\"$_dir:\$PATH\"" "$_rc_file" 2>/dev/null; then
         log_info "PATH already configured in $_rc_file"
         return 0
     fi
-    
+
     # Add to PATH
     printf "\n# Added by aiassisted installer\nexport PATH=\"\$PATH:%s\"\n" "$_dir" >> "$_rc_file"
-    
+
     log_success "Added to PATH in $_rc_file"
     log_warn "Please restart your terminal or run: source $_rc_file"
+}
+
+###########################################
+# Platform Detection
+###########################################
+
+detect_platform() {
+    _os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    _arch=$(uname -m)
+
+    # Map architecture names
+    case "$_arch" in
+        x86_64)
+            _arch="x86_64"
+            ;;
+        arm64|aarch64)
+            _arch="aarch64"
+            ;;
+        *)
+            log_error "Unsupported architecture: $_arch"
+            printf "\nSupported architectures: x86_64, aarch64 (arm64)\n" >&2
+            exit 1
+            ;;
+    esac
+
+    # Map OS names to target triples
+    case "$_os" in
+        linux)
+            _target="${_arch}-unknown-linux-gnu"
+            _ext=""
+            ;;
+        darwin)
+            _target="${_arch}-apple-darwin"
+            _ext=""
+            ;;
+        msys*|mingw*|cygwin*|windows*)
+            _target="${_arch}-pc-windows-msvc"
+            _ext=".exe"
+            ;;
+        *)
+            log_error "Unsupported operating system: $_os"
+            printf "\nSupported OS: Linux, macOS, Windows\n" >&2
+            exit 1
+            ;;
+    esac
+
+    PLATFORM="$_target"
+    BINARY_EXT="$_ext"
 }
 
 ###########################################
@@ -167,98 +221,128 @@ add_to_path() {
 
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
-    # Check git
-    if ! command -v git >/dev/null 2>&1; then
-        log_error "git is required but not found"
-        printf "\n%sPlease install git first:%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        printf "  macOS:   %sxcode-select --install%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        printf "  Ubuntu:  %ssudo apt install git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        printf "  Debian:  %ssudo apt install git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        printf "  Fedora:  %ssudo dnf install git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        printf "  Arch:    %ssudo pacman -S git%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-        printf "  Alpine:  %ssudo apk add git%s\n\n" "$COLOR_BOLD" "$COLOR_RESET"
+
+    # Check for curl or wget
+    if command -v curl >/dev/null 2>&1; then
+        DOWNLOADER="curl"
+        log_success "curl found: $(curl --version | head -1)"
+    elif command -v wget >/dev/null 2>&1; then
+        DOWNLOADER="wget"
+        log_success "wget found: $(wget --version | head -1)"
+    else
+        log_error "curl or wget is required but neither was found"
+        printf "\n%sPlease install curl or wget first:%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  macOS:   %sbrew install curl%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Ubuntu:  %ssudo apt install curl%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Fedora:  %ssudo dnf install curl%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        printf "  Arch:    %ssudo pacman -S curl%s\n" "$COLOR_BOLD" "$COLOR_RESET"
         exit 1
     fi
-    
-    log_success "git found: $(git --version)"
+
+    # Check for tar
+    if ! command -v tar >/dev/null 2>&1; then
+        log_error "tar is required but not found"
+        printf "\n%sPlease install tar first:%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+        exit 1
+    fi
+
+    log_success "tar found: $(tar --version 2>&1 | head -1 || echo 'tar')"
+}
+
+###########################################
+# Download Functions
+###########################################
+
+download_file() {
+    _url="$1"
+    _output="$2"
+
+    if [ "$DOWNLOADER" = "curl" ]; then
+        curl -fsSL "$_url" -o "$_output"
+    else
+        wget -q "$_url" -O "$_output"
+    fi
 }
 
 ###########################################
 # Installation Functions
 ###########################################
 
-install_cli() {
-    log_info "Installing aiassisted to $AIASSISTED_HOME"
-    
-    # Create necessary directories
-    if ! mkdir -p "$AIASSISTED_HOME" "$BIN_DIR"; then
-        log_error "Failed to create installation directories"
+install_binary() {
+    log_info "Installing aiassisted binary for $PLATFORM"
+
+    # Create binary directory
+    if ! mkdir -p "$BIN_DIR"; then
+        log_error "Failed to create directory: $BIN_DIR"
         exit 1
     fi
-    
-    # Detect if running from a git repository (development mode)
-    _installer_dir="$(cd "$(dirname "$0")" && pwd)"
-    _is_dev_mode=false
-    if [ -d "$_installer_dir/.git" ]; then
-        log_info "Development mode detected (running from git repository)"
-        _is_dev_mode=true
-    fi
-    
-    # Remove existing installation if present
-    if [ -d "$SOURCE_DIR" ]; then
-        log_warn "Existing installation found at $SOURCE_DIR"
-        log_info "Removing old installation..."
-        rm -rf "$SOURCE_DIR"
-    fi
-    
-    # Clone or copy repository
-    if [ "$_is_dev_mode" = true ]; then
-        # Development: copy local repository (preserves uncommitted changes)
-        log_info "Copying local repository for development..."
-        mkdir -p "$(dirname "$SOURCE_DIR")"
-        
-        # Use rsync if available (faster, can exclude), otherwise cp with manual cleanup
-        if command -v rsync >/dev/null 2>&1; then
-            if ! rsync -a --exclude='.venv' --exclude='node_modules' --exclude='*.pyc' \
-                "$_installer_dir/" "$SOURCE_DIR/"; then
-                log_error "Failed to copy local repository"
-                exit 1
-            fi
-        else
-            if ! cp -r "$_installer_dir" "$SOURCE_DIR"; then
-                log_error "Failed to copy local repository"
-                exit 1
-            fi
-            # Clean up build artifacts
-            rm -rf "$SOURCE_DIR/.venv" "$SOURCE_DIR/node_modules" 2>/dev/null || true
-            find "$SOURCE_DIR" -name "*.pyc" -delete 2>/dev/null || true
-        fi
-        
-        log_success "Copied local repository to $SOURCE_DIR"
+
+    # Construct download URL
+    if [ "$VERSION" = "latest" ]; then
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/latest/download"
     else
-        # Production: clone from GitHub
-        log_info "Cloning repository from $GITHUB_REPO..."
-        if ! git clone --depth 1 "$GITHUB_URL" "$SOURCE_DIR"; then
-            log_error "Failed to clone repository"
-            exit 1
-        fi
-        log_success "Cloned repository to $SOURCE_DIR"
+        DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}"
     fi
-    
-    # Create symlink to CLI
-    log_info "Creating symlink to $CLI_PATH..."
-    if [ -L "$CLI_PATH" ] || [ -f "$CLI_PATH" ]; then
-        rm -f "$CLI_PATH"
-    fi
-    
-    if ! ln -sf "$SOURCE_DIR/bin/aiassisted" "$CLI_PATH"; then
-        log_error "Failed to create symlink"
+
+    ARCHIVE_NAME="${BINARY_NAME}-${PLATFORM}.tar.gz"
+    DOWNLOAD_URL="${DOWNLOAD_URL}/${ARCHIVE_NAME}"
+
+    log_info "Downloading from: $DOWNLOAD_URL"
+
+    # Create temporary directory
+    TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'aiassisted')
+    TMP_ARCHIVE="$TMP_DIR/$ARCHIVE_NAME"
+
+    # Download archive
+    if ! download_file "$DOWNLOAD_URL" "$TMP_ARCHIVE"; then
+        log_error "Failed to download binary from: $DOWNLOAD_URL"
+        rm -rf "$TMP_DIR"
+        printf "\nThis could mean:\n" >&2
+        printf "  - The version %s doesn't exist\n" "$VERSION" >&2
+        printf "  - No binary available for platform: %s\n" "$PLATFORM" >&2
+        printf "  - Network connection issue\n\n" >&2
+        printf "Try visiting: https://github.com/%s/releases\n" "$GITHUB_REPO" >&2
         exit 1
     fi
-    
-    log_success "Created symlink: $CLI_PATH -> $SOURCE_DIR/bin/aiassisted"
-    
+
+    log_success "Downloaded binary archive"
+
+    # Extract archive
+    log_info "Extracting binary..."
+    if ! tar -xzf "$TMP_ARCHIVE" -C "$TMP_DIR"; then
+        log_error "Failed to extract archive"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
+    # Find and move binary
+    BINARY_PATH="$TMP_DIR/${BINARY_NAME}${BINARY_EXT}"
+    if [ ! -f "$BINARY_PATH" ]; then
+        log_error "Binary not found in archive: ${BINARY_NAME}${BINARY_EXT}"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
+    # Install binary
+    INSTALL_PATH="$BIN_DIR/${BINARY_NAME}${BINARY_EXT}"
+    if ! mv "$BINARY_PATH" "$INSTALL_PATH"; then
+        log_error "Failed to install binary to: $INSTALL_PATH"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
+    # Make executable
+    if ! chmod +x "$INSTALL_PATH"; then
+        log_error "Failed to make binary executable"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
+    # Clean up
+    rm -rf "$TMP_DIR"
+
+    log_success "Installed binary to: $INSTALL_PATH"
+
     # Check if in PATH
     if ! is_in_path "$BIN_DIR"; then
         log_warn "$BIN_DIR is not in your PATH"
@@ -268,59 +352,25 @@ install_cli() {
     fi
 }
 
-setup_global_config() {
-    _config_file="$AIASSISTED_HOME/config.toml"
-    _templates_dir="$AIASSISTED_HOME/templates"
-    _cache_dir="$AIASSISTED_HOME/cache"
-    _state_dir="$AIASSISTED_HOME/state"
-    
-    log_info "Setting up global configuration directory"
-    
-    # Create directories
-    if ! mkdir -p "$_templates_dir" "$_cache_dir" "$_state_dir"; then
-        log_error "Failed to create configuration directories"
-        exit 1
-    fi
-    
-    # Create default config.toml if not exists
-    if [ ! -f "$_config_file" ]; then
-        log_info "Creating default configuration file..."
-        
-        # Check if default config exists in source
-        _default_config="$SOURCE_DIR/.aiassisted/config.toml.default"
-        if [ -f "$_default_config" ]; then
-            cp "$_default_config" "$_config_file"
-            log_success "Created configuration file: $_config_file"
-        else
-            # Create minimal config as fallback
-            cat > "$_config_file" << 'EOF'
-# aiassisted CLI Configuration
-[general]
-default_runtime = "auto"
-verbosity = 1
+verify_installation() {
+    INSTALL_PATH="$BIN_DIR/${BINARY_NAME}${BINARY_EXT}"
 
-[install]
-auto_update = true
+    log_info "Verifying installation..."
 
-[templates]
-prefer_project = true
-EOF
-            log_success "Created minimal configuration file: $_config_file"
-        fi
+    # Test if binary is executable
+    if [ -x "$INSTALL_PATH" ]; then
+        log_success "Binary is executable"
     else
-        log_info "Configuration file already exists: $_config_file"
-    fi
-    
-    log_success "Global configuration setup complete"
-}
-
-install_aiassisted_dir() {
-    log_info "Installing .aiassisted directory to current directory"
-    
-    # Run the CLI to install .aiassisted
-    if ! "$CLI_PATH" install; then
-        log_error "Failed to install .aiassisted directory"
+        log_error "Binary is not executable: $INSTALL_PATH"
         exit 1
+    fi
+
+    # Try to get version (if binary supports --version)
+    if "$INSTALL_PATH" --version >/dev/null 2>&1; then
+        _version=$("$INSTALL_PATH" --version 2>&1 | head -1)
+        log_success "Installation verified: $_version"
+    else
+        log_success "Binary installed successfully"
     fi
 }
 
@@ -330,37 +380,35 @@ install_aiassisted_dir() {
 
 main() {
     printf "\n%s%saiassisted Installer%s\n\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
-    
+
+    # Detect platform
+    detect_platform
+    log_info "Detected platform: $PLATFORM"
+
+    printf "\n"
+
     # Check prerequisites
     check_prerequisites
-    
+
     printf "\n"
-    
-    # Install CLI
-    install_cli
-    
+
+    # Install binary
+    install_binary
+
     printf "\n"
-    
-    # Setup global configuration
-    setup_global_config
-    
-    printf "\n"
-    
-    # Install .aiassisted directory to current directory
-    install_aiassisted_dir
-    
+
+    # Verify installation
+    verify_installation
+
     printf "\n"
     log_success "Installation complete!"
-    
+
     printf "\n%s%sNext Steps:%s\n" "$COLOR_BOLD" "$COLOR_GREEN" "$COLOR_RESET"
     printf "  1. Restart your terminal or run: %ssource %s%s\n" "$COLOR_BOLD" "$(get_shell_rc_file)" "$COLOR_RESET"
-    printf "  2. Use %saiassisted help%s to see all available commands\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  3. Run %saiassisted setup-skills%s to setup AI coding tools\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "  4. Edit config: %saiassisted config edit%s\n" "$COLOR_BOLD" "$COLOR_RESET"
-    printf "\n%s%sInstalled to:%s\n" "$COLOR_BOLD" "$COLOR_BLUE" "$COLOR_RESET"
-    printf "  Source:  %s\n" "$SOURCE_DIR"
-    printf "  Config:  %s\n" "$AIASSISTED_HOME"
-    printf "  CLI:     %s\n\n" "$CLI_PATH"
+    printf "  2. Run %saiassisted --help%s to see available commands\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  3. Run %saiassisted install%s in your project to set up .aiassisted directory\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "  4. Configure with: %saiassisted config%s\n" "$COLOR_BOLD" "$COLOR_RESET"
+    printf "\n%s%sInstalled to:%s %s\n\n" "$COLOR_BOLD" "$COLOR_BLUE" "$COLOR_RESET" "$BIN_DIR/${BINARY_NAME}${BINARY_EXT}"
 }
 
 # Run main function
