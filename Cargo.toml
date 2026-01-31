@@ -1,6 +1,6 @@
 [package]
 name = "aiassisted"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 edition = "2024"
 authors = ["rstlix0x0"]
 description = "CLI tool for embedding AI assistant guidelines and templates into projects"
