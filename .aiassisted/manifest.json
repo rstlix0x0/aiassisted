@@ -1,0 +1,177 @@
+{
+  "version": "87d2583",
+  "files": [
+    {
+      "path": "config.toml.default",
+      "checksum": "059e350ca323c7a4414e60ee819ef1182681d411672c463f236fb7ba295dd45d"
+    },
+    {
+      "path": "config/README.md",
+      "checksum": "fcd186b5d115090ea343f86eca6218122648a959dcea1e8851eea6e4799c6a67"
+    },
+    {
+      "path": "guidelines/ai/agents/claude-code/README.md",
+      "checksum": "a6f02d2ec4278c035024cb83e3e622247de3582c1af78fa3c6353064500ee616"
+    },
+    {
+      "path": "guidelines/ai/agents/claude-code/claude-code-skills-guide.md",
+      "checksum": "2df3f1f13e82e7819e0944307afc78deb167106fcaf931706922478c047cc1de"
+    },
+    {
+      "path": "guidelines/ai/agents/claude-code/claude-code-subagents-guide.md",
+      "checksum": "9684bdb60fe5a93961feb050e5de2dc8deafe2d5aff89b2ef8a35bde7b9ae2ae"
+    },
+    {
+      "path": "guidelines/ai/agents/opencode/README.md",
+      "checksum": "dd781951e41641f0ee6d38bfebcc41b07bc02e3b00f80435fdffe5310bc6f221"
+    },
+    {
+      "path": "guidelines/ai/agents/opencode/opencode-agents-guide.md",
+      "checksum": "3e5664594e46b13a92b8db9e3b9ab1ae81fe7888d3ded7f91151088b087459d4"
+    },
+    {
+      "path": "guidelines/ai/agents/opencode/opencode-commands-guide.md",
+      "checksum": "f4cb66b715b7847cd5a448cdc74c23b7d272e3813fd5aecc890fc1ac4b2e040e"
+    },
+    {
+      "path": "guidelines/ai/agents/opencode/opencode-skills-guide.md",
+      "checksum": "52074b13b0168c87c1fbed7528329df2b94c041b4e161801713dc7284ba4d8fd"
+    },
+    {
+      "path": "guidelines/architecture/algebraic-data-types.md",
+      "checksum": "558b09b2c97f47042210800905dfaa24cba366f43ed997da411952fe57f8f47b"
+    },
+    {
+      "path": "guidelines/architecture/builder-pattern.md",
+      "checksum": "7d18292fa0f3b01b90410cb0bc684c7a1b2247d16f73bc5c958d60fbf0013ba8"
+    },
+    {
+      "path": "guidelines/architecture/dependency-management.md",
+      "checksum": "bfbb040a4a3cc0bfce2bc79710ceb1325f9e41c4f9bd64263b8476794c41dab2"
+    },
+    {
+      "path": "guidelines/architecture/factory-pattern.md",
+      "checksum": "3b6fa3301a2b5af01504e744a49a2d5339128f4d347e772920a887244c4cdd0b"
+    },
+    {
+      "path": "guidelines/architecture/modular-monolith.md",
+      "checksum": "9bfe0c6bda6bafbdcaabb184164dfe82cace71c3ae25d08b9d01b3aa3d0a2897"
+    },
+    {
+      "path": "guidelines/documentation/diataxis-guidelines.md",
+      "checksum": "38833f0a0c8cdaa54a6fff6297cb788a799bfb3bbb2b37c775d760f1b303d621"
+    },
+    {
+      "path": "guidelines/documentation/documentation-quality-standards.md",
+      "checksum": "3b594d635170a26fd4f66ab38f30c9686ca2fe56bf8883c9b2997b87781052ef"
+    },
+    {
+      "path": "guidelines/documentation/task-documentation-standards.md",
+      "checksum": "b14b3c04ef73f60e0eb9ef4d20724f028c44a6e91fd43c4d7203809bf83a5889"
+    },
+    {
+      "path": "guidelines/rust/microsoft-rust-guidelines.md",
+      "checksum": "8c3544c308ece663c73a1b4fcb72672bfdd5c1a2e161eb7ce511fdbec3d95858"
+    },
+    {
+      "path": "guidelines/rust/rust-adt-implementation-guide.md",
+      "checksum": "4fdf5f3e2b26cae2204e34616e9adf7dec58b326cd8cf1fef72cf62ba5efb8c7"
+    },
+    {
+      "path": "guidelines/rust/rust-builder-pattern-guide.md",
+      "checksum": "51fbcbf2e08da3d201db805965c37a2f0070d3ca2ed48b609a644eb3ac049961"
+    },
+    {
+      "path": "guidelines/rust/rust-dependency-management-guide.md",
+      "checksum": "19f4b9819821693fa6242ef8fa41b31b37b8056d94101e5e65c1fc48737c2fa2"
+    },
+    {
+      "path": "guidelines/rust/rust-dispatch-guide.md",
+      "checksum": "9bb6994af5c574147808c949217c2cca8a47982714e32509d8950edf732306de"
+    },
+    {
+      "path": "guidelines/rust/rust-factory-pattern-guide.md",
+      "checksum": "fa4689d78a7e8fd480087c3e348702948f68dbd9a196c2ef33ee5fc8892eff82"
+    },
+    {
+      "path": "guidelines/rust/rust-main-lib-crate-structure-guide.md",
+      "checksum": "3c356120ee72f0d74e1024f149540c1f927b549831bede77dc4fecf2441023ce"
+    },
+    {
+      "path": "guidelines/rust/rust-smart-pointers-guide.md",
+      "checksum": "517f27a7a941533829106fd83d474a945b1c8d5214c81562bcfbc16ede5c08c9"
+    },
+    {
+      "path": "guidelines/rust/rust-typestate-pattern-guide.md",
+      "checksum": "2de57b846fd9d3ddb152ba03a58123aa31f7c0288b7945d02b7313e11971dbb1"
+    },
+    {
+      "path": "instructions/ai-prompt-engineering-safety-best-practices.instructions.md",
+      "checksum": "108cb369cbf71df6a2cd94e456646a6e07f1bfd21801a0c345ec99f80f1220fb"
+    },
+    {
+      "path": "instructions/conventional-commits.instructions.md",
+      "checksum": "7fe291f822339f4d7e4f22c9f4f7b030b40f46f1d933bcb4ace10e817358e42f"
+    },
+    {
+      "path": "instructions/multi-project-memory-bank.instructions.md",
+      "checksum": "63b59c35ff7fc5b76269d1b055ad72cf7cafb5fae35b7ca1a92228fa47ca0a17"
+    },
+    {
+      "path": "instructions/rust.instructions.md",
+      "checksum": "32bbb01e728955f347e47ec7069eed525d82aefc47f23b4f0048691caebbb1aa"
+    },
+    {
+      "path": "instructions/setup-agents-context.instructions.md",
+      "checksum": "3f5cb0caf24c08d358d814629a61f4ed8f97486d85e9d78c8fcb73c5b61bb5ba"
+    },
+    {
+      "path": "prompts/git.commit.prompt.md",
+      "checksum": "8fa9bfc6c62e81df4fe310abfcaca393c6eff230ac6f87dd3f4b246ad8682ea8"
+    },
+    {
+      "path": "templates/README.md",
+      "checksum": "64e6470d57ed9a7d2196235da8815b7f82940edacedc9f0c72d8f54536467119"
+    },
+    {
+      "path": "templates/agents/claude/ai-knowledge-architecture.md.template",
+      "checksum": "2d615d6b7925eb4b0e2546b072c8db7ebf6c75e68bf435039ec2eda8989ca6cc"
+    },
+    {
+      "path": "templates/agents/claude/ai-knowledge-rust.md.template",
+      "checksum": "9a754a256969c8225111b8176919e68efde78823b0ea6c645805a75bd8a42cc8"
+    },
+    {
+      "path": "templates/agents/claude/git-commit.md.template",
+      "checksum": "9306a0a7a96c0500772609dbd0eaaa942e63d3262397213c4d13f5467a8e0a78"
+    },
+    {
+      "path": "templates/agents/opencode/ai-knowledge-architecture.md.template",
+      "checksum": "3808876f543dd829fe5c75dbc1361e8f2e6b4f9e1c97456500a91f5e9880eba9"
+    },
+    {
+      "path": "templates/agents/opencode/ai-knowledge-rust.md.template",
+      "checksum": "6d48ee43eebdbd02436ca6e44bbec63730bcdb5f05f4439f3886e82664934f98"
+    },
+    {
+      "path": "templates/agents/opencode/git-commit.md.template",
+      "checksum": "4abe0b74ad977ae1c02298e226a487a94a0d42650a1865e6140cb5737136a078"
+    },
+    {
+      "path": "templates/skills/claude/git-commit.SKILL.md.template",
+      "checksum": "3761e91987dfa56124826441a99c98f56a7916fd702671e359dac7353228b161"
+    },
+    {
+      "path": "templates/skills/claude/review-rust.SKILL.md.template",
+      "checksum": "f8ffad9bdf15fcb9dadafa9794f4de8a5f6501706e78a74d8675ee02a074f6cb"
+    },
+    {
+      "path": "templates/skills/opencode/git-commit.SKILL.md.template",
+      "checksum": "190844fe237b42d54349d9f75d66756d5ecd8b78157e98ad9390a535e7566f34"
+    },
+    {
+      "path": "templates/skills/opencode/review-rust.SKILL.md.template",
+      "checksum": "8a71773dfc025fb051113487de848dba84abc357201b0a65d07006726289966d"
+    }
+  ]
+}

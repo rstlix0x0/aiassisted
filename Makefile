@@ -12,8 +12,8 @@ help:
 	@echo "  make lint              - Run clippy linter"
 	@echo ""
 	@echo "Content management:"
-	@echo "  make update-version    - Update .version and FILES.txt with checksums"
-	@echo "  make verify-manifest   - Verify FILES.txt is up-to-date"
+	@echo "  make update-version    - Update .version and manifest.json with checksums"
+	@echo "  make verify-manifest   - Verify manifest.json is up-to-date"
 	@echo "  make commit-guidelines - Quick commit workflow for guidelines"
 	@echo ""
 	@echo "Utility targets:"
@@ -74,7 +74,7 @@ fmt-check:
 	@cargo fmt -- --check
 	@echo "✓ Code formatting is correct"
 
-# Update version and regenerate FILES.txt manifest with checksums
+# Update version and regenerate manifest.json with checksums
 update-version:
 	@echo "Updating version and manifest..."
 	@./scripts/update-version.sh
@@ -85,14 +85,14 @@ update-version:
 	@echo "  git add .aiassisted/"
 	@echo "  git commit -m 'docs: update .aiassisted content'"
 
-# Verify FILES.txt is up-to-date
+# Verify manifest.json is up-to-date
 verify-manifest:
-	@echo "Verifying FILES.txt manifest..."
+	@echo "Verifying manifest.json..."
 	@./scripts/update-version.sh > /dev/null
-	@if git diff --quiet .aiassisted/FILES.txt; then \
-		echo "✓ FILES.txt is up-to-date"; \
+	@if git diff --quiet .aiassisted/manifest.json; then \
+		echo "✓ manifest.json is up-to-date"; \
 	else \
-		echo "⚠ FILES.txt is out of date"; \
+		echo "⚠ manifest.json is out of date"; \
 		echo "  Run: make update-version"; \
 		exit 1; \
 	fi
@@ -109,7 +109,7 @@ status:
 	@echo "  Instructions: $$(find .aiassisted/instructions -type f 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo "  Prompts:      $$(find .aiassisted/prompts -type f 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo "  Templates:    $$(find .aiassisted/templates -type f 2>/dev/null | wc -l | tr -d ' ') files"
-	@echo "  Total:        $$(find .aiassisted -type f ! -name '.version' ! -name 'FILES.txt' 2>/dev/null | wc -l | tr -d ' ') files"
+	@echo "  Total:        $$(find .aiassisted -type f ! -name '.version' ! -name 'manifest.json' 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo ""
 	@if [ -f .aiassisted/.version ]; then \
 		echo "Content Version:"; \

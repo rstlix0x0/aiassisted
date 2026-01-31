@@ -1,9 +1,9 @@
 #!/bin/sh
 #
-# Update .aiassisted/.version and FILES.txt manifest with checksums
+# Update .aiassisted/.version and manifest.json with checksums
 #
 # This script automatically:
-# 1. Regenerates the FILES.txt manifest with all files and SHA256 checksums
+# 1. Regenerates the manifest.json with all files and SHA256 checksums
 # 2. Updates the version file with the latest commit hash
 #
 
@@ -33,7 +33,7 @@ detect_sha256_tool() {
 calculate_sha256() {
     _file="$1"
     _tool=$(detect_sha256_tool)
-    
+
     case "$_tool" in
         sha256sum)
             sha256sum "$_file" | cut -d' ' -f1
@@ -48,43 +48,70 @@ calculate_sha256() {
 }
 
 ###########################################
+# Escape JSON String
+###########################################
+
+escape_json_string() {
+    # Escape backslashes and quotes for JSON
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+###########################################
 # Main
 ###########################################
 
-echo "Regenerating .aiassisted/FILES.txt manifest with checksums..."
+echo "Regenerating .aiassisted/manifest.json with checksums..."
 
 # Change to .aiassisted directory
 cd .aiassisted
 
-# Create temp file for manifest
-_temp_manifest=$(mktemp)
-
-# Find all files and calculate checksums
-_file_count=0
-find . -type f ! -name '.version' ! -name 'FILES.txt' | sed 's|^\./||' | sort | while IFS= read -r _file; do
-    _hash=$(calculate_sha256 "$_file")
-    printf "%s:%s\n" "$_file" "$_hash"
-    _file_count=$((_file_count + 1))
-done > "$_temp_manifest"
-
-# Move temp file to FILES.txt
-mv "$_temp_manifest" FILES.txt
-
-FILES_COUNT=$(wc -l < FILES.txt | tr -d '[:space:]')
-echo "  Generated checksums for ${FILES_COUNT} files"
-
-# Return to root
+# Get version from parent directory commit
 cd ..
-
-# Get the latest commit hash for .aiassisted directory
 COMMIT_HASH=$(git log -1 --format="%H" -- .aiassisted/)
-
-# If no commits found for .aiassisted, use latest commit
 if [ -z "$COMMIT_HASH" ]; then
     COMMIT_HASH=$(git log -1 --format="%H")
 fi
-
 UPDATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+VERSION_STRING="${COMMIT_HASH:0:7}"
+cd .aiassisted
+
+# Start JSON file
+cat > manifest.json <<EOF
+{
+  "version": "$VERSION_STRING",
+  "files": [
+EOF
+
+# Find all files and calculate checksums
+_file_count=0
+_files=$(find . -type f ! -name '.version' ! -name 'manifest.json' ! -name 'FILES.txt' | sed 's|^\./||' | sort)
+
+for _file in $_files; do
+    _hash=$(calculate_sha256 "$_file")
+    _file_escaped=$(escape_json_string "$_file")
+
+    # Add comma if not first entry
+    if [ $_file_count -gt 0 ]; then
+        printf ",\n" >> manifest.json
+    fi
+
+    # Add file entry
+    printf '    {\n      "path": "%s",\n      "checksum": "%s"\n    }' "$_file_escaped" "$_hash" >> manifest.json
+
+    _file_count=$((_file_count + 1))
+done
+
+# Close JSON file
+cat >> manifest.json <<EOF
+
+  ]
+}
+EOF
+
+echo "  Generated checksums for ${_file_count} files"
+
+# Return to root
+cd ..
 
 # Write version file
 cat > .aiassisted/.version <<EOF
@@ -98,5 +125,5 @@ echo "  UPDATED_AT: ${UPDATED_AT}"
 echo ""
 echo "Don't forget to:"
 echo "  git add .aiassisted/"
-echo "  git commit -m 'docs: update .aiassisted content'"
+echo "  git commit -m 'docs: update .aiassisted manifest'"
 echo "  git push origin main"
