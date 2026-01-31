@@ -79,15 +79,11 @@ mod tests {
         #[async_trait::async_trait]
         impl crate::core::infra::FileSystem for FileSystem {
             async fn read(&self, path: &Path) -> crate::core::types::Result<String>;
-            async fn read_bytes(&self, path: &Path) -> crate::core::types::Result<Vec<u8>>;
             async fn write(&self, path: &Path, content: &str) -> crate::core::types::Result<()>;
-            async fn write_bytes(&self, path: &Path, content: &[u8]) -> crate::core::types::Result<()>;
             fn exists(&self, path: &Path) -> bool;
             fn is_dir(&self, path: &Path) -> bool;
             fn is_file(&self, path: &Path) -> bool;
             async fn create_dir_all(&self, path: &Path) -> crate::core::types::Result<()>;
-            async fn remove_file(&self, path: &Path) -> crate::core::types::Result<()>;
-            async fn remove_dir_all(&self, path: &Path) -> crate::core::types::Result<()>;
             async fn list_dir(&self, path: &Path) -> crate::core::types::Result<Vec<PathBuf>>;
             async fn copy(&self, from: &Path, to: &Path) -> crate::core::types::Result<()>;
         }

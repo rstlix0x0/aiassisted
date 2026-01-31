@@ -200,7 +200,6 @@ mod tests {
             async fn load(&self) -> Result<AppConfig>;
             async fn save(&self, config: &AppConfig) -> Result<()>;
             async fn get(&self, key: &str) -> Option<String>;
-            async fn set(&self, key: &str, value: &str) -> Result<()>;
             async fn reset(&self) -> Result<()>;
             fn config_path(&self) -> PathBuf;
         }

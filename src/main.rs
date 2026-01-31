@@ -1,34 +1,28 @@
 //! aiassisted CLI - Embed AI assistant guidelines and templates into projects.
 
-// Allow dead code in binary - library API is used by integration tests
-#![allow(dead_code)]
-
 use clap::Parser;
 
+// Binary-only module for CLI argument parsing
 mod cli;
-mod config;
-mod content;
-mod core;
-mod infra;
-mod selfupdate;
-mod templates;
 
+// Import from library crate using package name
 use cli::{Cli, Commands, ConfigCommands, TemplatesCommands};
-use config::{
+use aiassisted::config::{
     EditCommand as ConfigEditCommand, GetCommand as ConfigGetCommand,
     PathCommand as ConfigPathCommand, ResetCommand as ConfigResetCommand,
     ShowCommand as ConfigShowCommand, TomlConfigStore,
 };
-use content::{CheckCommand, InstallCommand, UpdateCommand};
-use core::infra::{Checksum, FileSystem, HttpClient, Logger};
-use infra::{ColoredLogger, ReqwestClient, Sha2Checksum, StdFileSystem};
-use selfupdate::{GithubReleasesProvider, SelfUpdateCommand};
-use templates::{
+use aiassisted::content::{CheckCommand, InstallCommand, UpdateCommand};
+use aiassisted::core::infra::{Checksum, FileSystem, HttpClient, Logger};
+use aiassisted::infra::{ColoredLogger, ReqwestClient, Sha2Checksum, StdFileSystem};
+use aiassisted::migration::MigrateCommand;
+use aiassisted::selfupdate::{GithubReleasesProvider, SelfUpdateCommand};
+use aiassisted::templates::{
     ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand, ShowTemplateCommand,
     TemplatesDiffCommand, TemplatesInitCommand, TemplatesPathCommand, TemplatesSyncCommand,
 };
-use templates::engine::SimpleTemplateEngine;
-use templates::resolver::CascadingResolver;
+use aiassisted::templates::engine::SimpleTemplateEngine;
+use aiassisted::templates::resolver::CascadingResolver;
 
 /// Application context holding all infrastructure dependencies.
 /// Uses static dispatch (generics) for zero-cost abstractions.
@@ -97,7 +91,7 @@ async fn main() {
         }
 
         Commands::SetupSkills(args) => {
-            let tool: core::ToolType = args.tool.into();
+            let tool: aiassisted::core::ToolType = args.tool.into();
             let cmd = SetupSkillsCommand {
                 tool,
                 dry_run: args.dry_run,
@@ -116,7 +110,7 @@ async fn main() {
         }
 
         Commands::SetupAgents(args) => {
-            let tool: core::ToolType = args.tool.into();
+            let tool: aiassisted::core::ToolType = args.tool.into();
             let cmd = SetupAgentsCommand {
                 tool,
                 dry_run: args.dry_run,
@@ -141,14 +135,14 @@ async fn main() {
 
             match args.command {
                 TemplatesCommands::List { tool } => {
-                    let tool: core::ToolType = tool.into();
+                    let tool: aiassisted::core::ToolType = tool.into();
                     let cmd = ListTemplatesCommand { tool };
                     cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
                 }
                 TemplatesCommands::Show { path } => {
                     let cmd = ShowTemplateCommand { path };
                     // Default to Claude for show command
-                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, core::ToolType::Claude).await
+                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, aiassisted::core::ToolType::Claude).await
                 }
                 TemplatesCommands::Init { force } => {
                     let cmd = TemplatesInitCommand { force };
@@ -203,6 +197,13 @@ async fn main() {
             let command = SelfUpdateCommand;
             command.execute(&provider, &ctx.logger).await
         }
+
+        Commands::Migrate => async {
+            let config_store = TomlConfigStore::new(StdFileSystem::new())?;
+            let cmd = MigrateCommand;
+            cmd.execute(&ctx.fs, &config_store, &ctx.logger).await.map(|_| ())
+        }
+        .await,
 
         Commands::Version => {
             println!("aiassisted {}", env!("CARGO_PKG_VERSION"));

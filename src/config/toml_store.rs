@@ -84,12 +84,6 @@ impl<F: FileSystem> ConfigStore for TomlConfigStore<F> {
         settings::get_value(&config, key)
     }
 
-    async fn set(&self, key: &str, value: &str) -> Result<()> {
-        let mut config = self.load_or_default().await?;
-        settings::set_value(&mut config, key, value)?;
-        self.save(&config).await
-    }
-
     async fn reset(&self) -> Result<()> {
         let default_config = AppConfig::default();
         self.save(&default_config).await
@@ -113,15 +107,11 @@ mod tests {
         #[async_trait]
         impl FileSystem for FileSystem {
             async fn read(&self, path: &Path) -> Result<String>;
-            async fn read_bytes(&self, path: &Path) -> Result<Vec<u8>>;
             async fn write(&self, path: &Path, contents: &str) -> Result<()>;
-            async fn write_bytes(&self, path: &Path, content: &[u8]) -> Result<()>;
             fn exists(&self, path: &Path) -> bool;
             fn is_dir(&self, path: &Path) -> bool;
             fn is_file(&self, path: &Path) -> bool;
             async fn create_dir_all(&self, path: &Path) -> Result<()>;
-            async fn remove_file(&self, path: &Path) -> Result<()>;
-            async fn remove_dir_all(&self, path: &Path) -> Result<()>;
             async fn list_dir(&self, path: &Path) -> Result<Vec<PathBuf>>;
             async fn copy(&self, from: &Path, to: &Path) -> Result<()>;
         }
@@ -254,35 +244,6 @@ prefer_project = true
 
         let value = store.get("unknown_key").await;
         assert_eq!(value, None);
-    }
-
-    #[tokio::test]
-    async fn test_set_value() {
-        let mut mock_fs = MockFileSystem::new();
-        // First call for load
-        mock_fs.expect_exists().returning(|_| false);
-        // Second call for save
-        mock_fs.expect_exists().returning(|_| true);
-        mock_fs.expect_create_dir_all().returning(|_| Ok(()));
-        mock_fs.expect_write().returning(|_, _| Ok(()));
-
-        let config_path = PathBuf::from("/test/config.toml");
-        let store = TomlConfigStore::with_path(mock_fs, config_path);
-
-        let result = store.set("verbosity", "2").await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_set_invalid_value() {
-        let mut mock_fs = MockFileSystem::new();
-        mock_fs.expect_exists().returning(|_| false);
-
-        let config_path = PathBuf::from("/test/config.toml");
-        let store = TomlConfigStore::with_path(mock_fs, config_path);
-
-        let result = store.set("verbosity", "invalid").await;
-        assert!(result.is_err());
     }
 
     #[tokio::test]

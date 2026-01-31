@@ -1,25 +1,26 @@
-.PHONY: help update-version lint lint-strict install-shellcheck test test-cli test-installer test-setup clean status check-uncommitted
+.PHONY: help update-version lint test check build run clean status check-uncommitted version
 
 # Default target
 help:
 	@echo "aiassisted - Maintainer Makefile"
 	@echo ""
-	@echo "Common targets:"
-	@echo "  make help              - Show this help message"
-	@echo "  make update-version    - Update .version and FILES.txt with checksums"
-	@echo "  make lint              - Lint all source code (shell scripts)"
-	@echo "  make lint-strict       - Lint all source code (fails if linters not available)"
-	@echo "  make install-shellcheck - Install shellcheck via Homebrew (macOS only)"
-	@echo "  make test              - Run all tests"
-	@echo "  make test-cli          - Test CLI commands"
-	@echo "  make test-installer    - Test installer script"
-	@echo "  make test-setup        - Test setup-skills and setup-agents commands"
-	@echo "  make status            - Show git status and file counts"
-	@echo "  make check-uncommitted - Check for uncommitted changes"
-	@echo "  make clean             - Clean temporary files and build artifacts"
+	@echo "Development targets:"
+	@echo "  make check             - Check code compiles (cargo check)"
+	@echo "  make test              - Run all tests (cargo test)"
+	@echo "  make build             - Build release binary"
+	@echo "  make run               - Run the CLI (cargo run -- --help)"
+	@echo "  make lint              - Run clippy linter"
 	@echo ""
-	@echo "Shell-specific targets:"
-	@echo "  make lint-shell        - Lint shell scripts"
+	@echo "Content management:"
+	@echo "  make update-version    - Update .version and FILES.txt with checksums"
+	@echo "  make verify-manifest   - Verify FILES.txt is up-to-date"
+	@echo "  make commit-guidelines - Quick commit workflow for guidelines"
+	@echo ""
+	@echo "Utility targets:"
+	@echo "  make status            - Show git status and file counts"
+	@echo "  make version           - Show version information"
+	@echo "  make clean             - Clean build artifacts and temp files"
+	@echo "  make check-uncommitted - Check for uncommitted changes"
 	@echo ""
 	@echo "Workflow for updating guidelines:"
 	@echo "  1. Edit files in .aiassisted/"
@@ -28,6 +29,50 @@ help:
 	@echo "  4. git add .aiassisted/"
 	@echo "  5. git commit -m 'docs: update guidelines'"
 	@echo "  6. git push origin main"
+
+# Check code compiles
+check:
+	@echo "Checking code..."
+	@cargo check
+	@echo ""
+	@echo "✓ Code compiles successfully"
+
+# Run all tests
+test:
+	@echo "Running tests..."
+	@cargo test
+	@echo ""
+	@echo "✓ All tests passed"
+
+# Build release binary
+build:
+	@echo "Building release binary..."
+	@cargo build --release
+	@echo ""
+	@echo "✓ Binary built: target/release/aiassisted"
+
+# Run the CLI
+run:
+	@cargo run -- --help
+
+# Run clippy linter
+lint:
+	@echo "Running clippy..."
+	@cargo clippy -- -D warnings
+	@echo ""
+	@echo "✓ Linting passed"
+
+# Format code
+fmt:
+	@echo "Formatting code..."
+	@cargo fmt
+	@echo "✓ Code formatted"
+
+# Check code formatting
+fmt-check:
+	@echo "Checking code formatting..."
+	@cargo fmt -- --check
+	@echo "✓ Code formatting is correct"
 
 # Update version and regenerate FILES.txt manifest with checksums
 update-version:
@@ -40,103 +85,17 @@ update-version:
 	@echo "  git add .aiassisted/"
 	@echo "  git commit -m 'docs: update .aiassisted content'"
 
-# Lint shell scripts (graceful skip if shellcheck not installed)
-lint: lint-shell
-	@echo ""
-	@echo "✓ All linting passed"
-
-# Lint shell scripts only
-lint-shell:
-	@echo "Linting shell scripts..."
-	@if command -v shellcheck >/dev/null 2>&1; then \
-		echo "  Checking install.sh..."; \
-		shellcheck install.sh || exit 1; \
-		echo "  Checking bin/aiassisted..."; \
-		shellcheck bin/aiassisted || exit 1; \
-		echo "  Checking src/shell/core.sh..."; \
-		shellcheck src/shell/core.sh || exit 1; \
-		echo "  Checking scripts/update-version.sh..."; \
-		shellcheck scripts/update-version.sh || exit 1; \
-		echo "  ✓ Shell scripts passed shellcheck"; \
+# Verify FILES.txt is up-to-date
+verify-manifest:
+	@echo "Verifying FILES.txt manifest..."
+	@./scripts/update-version.sh > /dev/null
+	@if git diff --quiet .aiassisted/FILES.txt; then \
+		echo "✓ FILES.txt is up-to-date"; \
 	else \
-		echo "  ⚠  shellcheck not found - skipping shell lint"; \
-		echo "     Install: make install-shellcheck"; \
-	fi
-
-# Strict shell linting
-	@echo ""
-	@echo "✓ All linting passed (strict mode)"
-
-# Strict shell linting
-lint-shell-strict:
-	@echo "Linting shell scripts (strict mode)..."
-	@if ! command -v shellcheck >/dev/null 2>&1; then \
-		echo "✗ Error: shellcheck is required but not installed"; \
-		echo "  Install: brew install shellcheck (macOS)"; \
+		echo "⚠ FILES.txt is out of date"; \
+		echo "  Run: make update-version"; \
 		exit 1; \
 	fi
-	@echo "  Checking install.sh..."
-	@shellcheck install.sh || exit 1
-	@echo "  Checking bin/aiassisted..."
-	@shellcheck bin/aiassisted || exit 1
-	@echo "  Checking src/shell/core.sh..."
-	@shellcheck src/shell/core.sh || exit 1
-	@echo "  Checking scripts/update-version.sh..."
-	@shellcheck scripts/update-version.sh || exit 1
-	@echo "  ✓ All shell scripts passed shellcheck"
-
-# Install shellcheck (macOS only)
-install-shellcheck:
-	@echo "Installing shellcheck..."
-	@if [ "$$(uname -s)" = "Darwin" ]; then \
-		if command -v brew >/dev/null 2>&1; then \
-			brew install shellcheck && echo "✓ shellcheck installed"; \
-		else \
-			echo "✗ Error: Homebrew not found"; \
-			echo "  Install Homebrew from: https://brew.sh"; \
-			exit 1; \
-		fi; \
-	else \
-		echo "✗ Error: This target only works on macOS"; \
-		echo "  On Linux, use your package manager:"; \
-		echo "    Ubuntu/Debian: sudo apt-get install shellcheck"; \
-		echo "    Fedora:        sudo dnf install shellcheck"; \
-		exit 1; \
-	fi
-
-# Run all tests
-test: test-syntax test-cli test-installer test-setup
-	@echo ""
-	@echo "✓ All tests passed"
-
-# Test shell script syntax
-test-syntax:
-	@echo "Testing shell script syntax..."
-	@sh -n install.sh && echo "  ✓ install.sh syntax OK" || exit 1
-	@sh -n bin/aiassisted && echo "  ✓ bin/aiassisted syntax OK" || exit 1
-	@sh -n src/shell/core.sh && echo "  ✓ src/shell/core.sh syntax OK" || exit 1
-	@sh -n scripts/update-version.sh && echo "  ✓ scripts/update-version.sh syntax OK" || exit 1
-
-# Test CLI commands
-test-cli:
-	@echo "Testing CLI commands..."
-	@./bin/aiassisted version >/dev/null && echo "  ✓ aiassisted version" || exit 1
-	@./bin/aiassisted help >/dev/null && echo "  ✓ aiassisted help" || exit 1
-	@echo "  ✓ CLI commands working"
-
-# Test installer script syntax and structure
-test-installer:
-	@echo "Testing installer..."
-	@sh -n install.sh && echo "  ✓ Installer syntax OK" || exit 1
-	@grep -q "GITHUB_REPO=" install.sh && echo "  ✓ GITHUB_REPO defined" || exit 1
-	@grep -q "git clone" install.sh && echo "  ✓ git clone installation exists" || exit 1
-
-# Test setup commands
-test-setup:
-	@echo "Testing setup commands..."
-	@./bin/aiassisted setup-skills --dry-run >/dev/null && echo "  ✓ setup-skills --dry-run works" || exit 1
-	@./bin/aiassisted setup-agents --dry-run >/dev/null && echo "  ✓ setup-agents --dry-run works" || exit 1
-	@echo "  ✓ Setup commands working"
 
 # Show project status
 status:
@@ -153,12 +112,16 @@ status:
 	@echo "  Total:        $$(find .aiassisted -type f ! -name '.version' ! -name 'FILES.txt' 2>/dev/null | wc -l | tr -d ' ') files"
 	@echo ""
 	@if [ -f .aiassisted/.version ]; then \
-		echo "Current Version:"; \
+		echo "Content Version:"; \
 		grep "COMMIT_HASH" .aiassisted/.version | sed 's/^/  /'; \
 		grep "UPDATED_AT" .aiassisted/.version | sed 's/^/  /'; \
 	fi
+	@echo ""
+	@echo "Rust:"
+	@echo "  Cargo version:  $$(cargo --version)"
+	@echo "  Binary version: $$(cargo run -q -- version 2>/dev/null || echo 'Not built')"
 
-# Check for uncommitted changes (useful in CI)
+# Check for uncommitted changes
 check-uncommitted:
 	@echo "Checking for uncommitted changes..."
 	@if [ -n "$$(git status --porcelain)" ]; then \
@@ -169,31 +132,12 @@ check-uncommitted:
 		echo "✓ No uncommitted changes"; \
 	fi
 
-# Clean temporary files
-clean:
-	@echo "Cleaning temporary files and build artifacts..."
-	@find . -name "*.tmp" -delete
-	@find . -name ".DS_Store" -delete
-	@echo "✓ Cleaned"
-
-# Verify FILES.txt is up-to-date
-verify-manifest:
-	@echo "Verifying FILES.txt manifest..."
-	@scripts/update-version.sh > /dev/null
-	@if git diff --quiet .aiassisted/FILES.txt; then \
-		echo "✓ FILES.txt is up-to-date"; \
-	else \
-		echo "⚠ FILES.txt is out of date"; \
-		echo "  Run: make update-version"; \
-		exit 1; \
-	fi
-
 # Show version information
 version:
 	@echo "Version Information:"
 	@echo ""
 	@echo "CLI Version:"
-	@./bin/aiassisted version
+	@cargo run -q -- version
 	@echo ""
 	@if [ -f .aiassisted/.version ]; then \
 		echo "Content Version:"; \
@@ -223,7 +167,48 @@ diff-aiassisted:
 	@echo ""
 	@git diff .aiassisted/
 
-# Pre-commit checks (useful as git pre-commit hook)
-pre-commit: lint test-syntax verify-manifest
+# Clean build artifacts and temporary files
+clean:
+	@echo "Cleaning build artifacts and temporary files..."
+	@cargo clean
+	@find . -name "*.tmp" -delete
+	@find . -name ".DS_Store" -delete
+	@echo "✓ Cleaned"
+
+# Pre-commit checks
+pre-commit: fmt-check check test verify-manifest
 	@echo ""
 	@echo "✓ Pre-commit checks passed"
+
+# Install the binary locally
+install:
+	@echo "Installing binary to ~/.local/bin/..."
+	@cargo install --path .
+	@echo "✓ Installed to ~/.local/bin/aiassisted"
+
+# Watch for changes and run tests
+watch:
+	@echo "Watching for changes..."
+	@cargo watch -x test
+
+# Generate documentation
+docs:
+	@echo "Generating documentation..."
+	@cargo doc --no-deps --open
+
+# CI workflow
+ci: fmt-check check test
+	@echo ""
+	@echo "✓ CI checks passed"
+
+# Release workflow
+release: pre-commit
+	@echo ""
+	@echo "Ready for release!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Update version in Cargo.toml"
+	@echo "  2. git add Cargo.toml Cargo.lock"
+	@echo "  3. git commit -m 'chore: bump version to vX.Y.Z'"
+	@echo "  4. git tag vX.Y.Z"
+	@echo "  5. git push origin main --tags"

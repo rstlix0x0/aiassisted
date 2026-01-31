@@ -15,14 +15,8 @@ pub trait FileSystem: Send + Sync {
     /// Read the contents of a file as a string.
     async fn read(&self, path: &Path) -> Result<String>;
 
-    /// Read the contents of a file as bytes.
-    async fn read_bytes(&self, path: &Path) -> Result<Vec<u8>>;
-
     /// Write content to a file.
     async fn write(&self, path: &Path, content: &str) -> Result<()>;
-
-    /// Write bytes to a file.
-    async fn write_bytes(&self, path: &Path, content: &[u8]) -> Result<()>;
 
     /// Check if a path exists.
     fn exists(&self, path: &Path) -> bool;
@@ -35,12 +29,6 @@ pub trait FileSystem: Send + Sync {
 
     /// Create a directory and all parent directories.
     async fn create_dir_all(&self, path: &Path) -> Result<()>;
-
-    /// Remove a file.
-    async fn remove_file(&self, path: &Path) -> Result<()>;
-
-    /// Remove a directory and all its contents.
-    async fn remove_dir_all(&self, path: &Path) -> Result<()>;
 
     /// List entries in a directory.
     async fn list_dir(&self, path: &Path) -> Result<Vec<PathBuf>>;

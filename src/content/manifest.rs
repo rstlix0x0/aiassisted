@@ -7,7 +7,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::core::infra::{Checksum, FileSystem, HttpClient};
+use crate::core::infra::{FileSystem, HttpClient};
 use crate::core::types::{Error, ManifestEntry, Result};
 
 /// Manifest structure matching the JSON format.
@@ -37,42 +37,10 @@ impl Manifest {
         fs.write(path, &content).await
     }
 
-    /// Verify checksums of all files in the manifest.
-    pub fn verify_checksums<C: Checksum, F: FileSystem>(
-        &self,
-        checksum: &C,
-        fs: &F,
-        base_path: &Path,
-    ) -> Result<Vec<(ManifestEntry, bool)>> {
-        let mut results = Vec::new();
-
-        for entry in &self.files {
-            let file_path = base_path.join(&entry.path);
-
-            if !fs.exists(&file_path) {
-                results.push((entry.clone(), false));
-                continue;
-            }
-
-            match checksum.sha256_file(&file_path) {
-                Ok(actual_checksum) => {
-                    let matches = actual_checksum == entry.checksum;
-                    results.push((entry.clone(), matches));
-                }
-                Err(_) => {
-                    results.push((entry.clone(), false));
-                }
-            }
-        }
-
-        Ok(results)
-    }
-
     /// Compare this manifest with another to find differences.
     pub fn diff(&self, other: &Manifest) -> ManifestDiff {
         let mut new_files = Vec::new();
         let mut modified_files = Vec::new();
-        let mut unchanged_files = Vec::new();
 
         for other_entry in &other.files {
             match self
@@ -81,9 +49,7 @@ impl Manifest {
                 .find(|e| e.path == other_entry.path)
             {
                 Some(local_entry) => {
-                    if local_entry.checksum == other_entry.checksum {
-                        unchanged_files.push(other_entry.clone());
-                    } else {
+                    if local_entry.checksum != other_entry.checksum {
                         modified_files.push(other_entry.clone());
                     }
                 }
@@ -96,7 +62,6 @@ impl Manifest {
         ManifestDiff {
             new_files,
             modified_files,
-            unchanged_files,
         }
     }
 }
@@ -106,7 +71,6 @@ impl Manifest {
 pub struct ManifestDiff {
     pub new_files: Vec<ManifestEntry>,
     pub modified_files: Vec<ManifestEntry>,
-    pub unchanged_files: Vec<ManifestEntry>,
 }
 
 impl ManifestDiff {
@@ -129,7 +93,6 @@ mod tests {
     use super::*;
     use mockall::{mock, predicate::*};
     use std::path::PathBuf;
-    use tempfile::TempDir;
 
     // Mock FileSystem for testing
     mock! {
@@ -138,15 +101,11 @@ mod tests {
         #[async_trait::async_trait]
         impl crate::core::infra::FileSystem for FileSystem {
             async fn read(&self, path: &Path) -> Result<String>;
-            async fn read_bytes(&self, path: &Path) -> Result<Vec<u8>>;
             async fn write(&self, path: &Path, content: &str) -> Result<()>;
-            async fn write_bytes(&self, path: &Path, content: &[u8]) -> Result<()>;
             fn exists(&self, path: &Path) -> bool;
             fn is_dir(&self, path: &Path) -> bool;
             fn is_file(&self, path: &Path) -> bool;
             async fn create_dir_all(&self, path: &Path) -> Result<()>;
-            async fn remove_file(&self, path: &Path) -> Result<()>;
-            async fn remove_dir_all(&self, path: &Path) -> Result<()>;
             async fn list_dir(&self, path: &Path) -> Result<Vec<PathBuf>>;
             async fn copy(&self, from: &Path, to: &Path) -> Result<()>;
         }
@@ -190,7 +149,6 @@ mod tests {
         assert!(!diff.has_changes());
         assert_eq!(diff.new_files.len(), 0);
         assert_eq!(diff.modified_files.len(), 0);
-        assert_eq!(diff.unchanged_files.len(), 1);
     }
 
     #[test]
@@ -279,7 +237,6 @@ mod tests {
         assert!(diff.has_changes());
         assert_eq!(diff.new_files.len(), 1);
         assert_eq!(diff.modified_files.len(), 1);
-        assert_eq!(diff.unchanged_files.len(), 1);
     }
 
     #[test]
@@ -425,87 +382,5 @@ mod tests {
 
         let result = manifest.save(&mock_fs, Path::new("output.json")).await;
         assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_verify_checksums_all_match() {
-        let manifest = Manifest {
-            version: "1.0.0".to_string(),
-            files: vec![ManifestEntry {
-                path: PathBuf::from("test.txt"),
-                checksum: "abc123".to_string(),
-            }],
-        };
-
-        let mut mock_checksum = MockChecksum::new();
-        let mut mock_fs = MockFileSystem::new();
-
-        mock_fs.expect_exists().times(1).returning(|_| true);
-
-        mock_checksum
-            .expect_sha256_file()
-            .times(1)
-            .returning(|_| Ok("abc123".to_string()));
-
-        let temp_dir = TempDir::new().unwrap();
-        let results = manifest
-            .verify_checksums(&mock_checksum, &mock_fs, temp_dir.path())
-            .unwrap();
-
-        assert_eq!(results.len(), 1);
-        assert!(results[0].1); // Checksum matches
-    }
-
-    #[tokio::test]
-    async fn test_verify_checksums_mismatch() {
-        let manifest = Manifest {
-            version: "1.0.0".to_string(),
-            files: vec![ManifestEntry {
-                path: PathBuf::from("test.txt"),
-                checksum: "abc123".to_string(),
-            }],
-        };
-
-        let mut mock_checksum = MockChecksum::new();
-        let mut mock_fs = MockFileSystem::new();
-
-        mock_fs.expect_exists().times(1).returning(|_| true);
-
-        mock_checksum
-            .expect_sha256_file()
-            .times(1)
-            .returning(|_| Ok("different".to_string()));
-
-        let temp_dir = TempDir::new().unwrap();
-        let results = manifest
-            .verify_checksums(&mock_checksum, &mock_fs, temp_dir.path())
-            .unwrap();
-
-        assert_eq!(results.len(), 1);
-        assert!(!results[0].1); // Checksum does not match
-    }
-
-    #[tokio::test]
-    async fn test_verify_checksums_file_missing() {
-        let manifest = Manifest {
-            version: "1.0.0".to_string(),
-            files: vec![ManifestEntry {
-                path: PathBuf::from("missing.txt"),
-                checksum: "abc123".to_string(),
-            }],
-        };
-
-        let mock_checksum = MockChecksum::new();
-        let mut mock_fs = MockFileSystem::new();
-
-        mock_fs.expect_exists().times(1).returning(|_| false);
-
-        let temp_dir = TempDir::new().unwrap();
-        let results = manifest
-            .verify_checksums(&mock_checksum, &mock_fs, temp_dir.path())
-            .unwrap();
-
-        assert_eq!(results.len(), 1);
-        assert!(!results[0].1); // File doesn't exist
     }
 }

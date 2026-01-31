@@ -66,22 +66,6 @@ async fn test_config_save_and_load() {
 }
 
 #[tokio::test]
-async fn test_config_get_set() {
-    let fs = StdFileSystem::new();
-    let temp_dir = TempDir::new().unwrap();
-    let config_path = temp_dir.path().join("config.toml");
-
-    let store = TomlConfigStore::with_path(fs, config_path);
-
-    // Set a value
-    store.set("default_tool", "claude").await.unwrap();
-
-    // Get it back
-    let value = store.get("default_tool").await;
-    assert_eq!(value, Some("claude".to_string()));
-}
-
-#[tokio::test]
 async fn test_config_get_unknown_key() {
     let fs = StdFileSystem::new();
     let temp_dir = TempDir::new().unwrap();
@@ -162,8 +146,10 @@ async fn test_get_command_existing_key() {
 
     let store = TomlConfigStore::with_path(fs, config_path);
 
-    // Set default_tool
-    store.set("default_tool", "claude").await.unwrap();
+    // Save config with default_tool set to claude
+    let mut config = AppConfig::default();
+    config.default_tool = ToolType::Claude;
+    store.save(&config).await.unwrap();
 
     let cmd = GetCommand {
         key: "default_tool".to_string(),
@@ -216,20 +202,6 @@ async fn test_reset_command_with_force() {
 }
 
 #[tokio::test]
-async fn test_config_validation() {
-    let fs = StdFileSystem::new();
-    let temp_dir = TempDir::new().unwrap();
-    let config_path = temp_dir.path().join("config.toml");
-
-    let store = TomlConfigStore::with_path(fs, config_path);
-
-    // Try to set invalid verbosity (should fail validation)
-    let result = store.set("verbosity", "10").await;
-
-    assert!(result.is_err());
-}
-
-#[tokio::test]
 async fn test_config_toml_roundtrip() {
     let fs = StdFileSystem::new();
     let temp_dir = TempDir::new().unwrap();
@@ -263,37 +235,17 @@ async fn test_config_toml_roundtrip() {
 }
 
 #[tokio::test]
-async fn test_config_multiple_sets() {
-    let fs = StdFileSystem::new();
-    let temp_dir = TempDir::new().unwrap();
-    let config_path = temp_dir.path().join("config.toml");
-
-    let store = TomlConfigStore::with_path(fs, config_path);
-
-    // Set multiple values
-    store.set("default_tool", "claude").await.unwrap();
-    store.set("verbosity", "2").await.unwrap();
-    store.set("auto_update", "false").await.unwrap();
-
-    // Verify all are set
-    assert_eq!(store.get("default_tool").await, Some("claude".to_string()));
-    assert_eq!(store.get("verbosity").await, Some("2".to_string()));
-    assert_eq!(
-        store.get("auto_update").await,
-        Some("false".to_string())
-    );
-}
-
-#[tokio::test]
 async fn test_config_persistence() {
     let fs = StdFileSystem::new();
     let temp_dir = TempDir::new().unwrap();
     let config_path = temp_dir.path().join("config.toml");
 
-    // First store instance
+    // First store instance - save config with claude tool
     {
         let store1 = TomlConfigStore::with_path(fs.clone(), config_path.clone());
-        store1.set("default_tool", "claude").await.unwrap();
+        let mut config = AppConfig::default();
+        config.default_tool = ToolType::Claude;
+        store1.save(&config).await.unwrap();
     }
 
     // Second store instance (simulating app restart)

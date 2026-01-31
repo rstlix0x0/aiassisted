@@ -8,6 +8,7 @@ pub mod config;
 pub mod content;
 pub mod core;
 pub mod infra;
+pub mod migration;
 pub mod selfupdate;
 pub mod templates;
 

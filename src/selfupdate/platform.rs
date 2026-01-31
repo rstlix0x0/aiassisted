@@ -43,18 +43,6 @@ impl Platform {
             _ => format!("{}-{}", self.arch, self.os), // Fallback
         }
     }
-
-    /// Check if the platform is supported.
-    pub fn is_supported(&self) -> bool {
-        matches!(
-            (self.os.as_str(), self.arch.as_str()),
-            ("linux", "x86_64")
-                | ("linux", "aarch64")
-                | ("macos", "x86_64")
-                | ("macos", "aarch64")
-                | ("windows", "x86_64")
-        )
-    }
 }
 
 #[cfg(test)]
@@ -163,69 +151,6 @@ mod tests {
             arch: "x86_64".to_string(),
         };
         assert_eq!(platform.target_triple(), "x86_64-pc-windows-msvc");
-    }
-
-    #[test]
-    fn test_is_supported_linux_x86_64() {
-        let platform = Platform {
-            os: "linux".to_string(),
-            arch: "x86_64".to_string(),
-        };
-        assert!(platform.is_supported());
-    }
-
-    #[test]
-    fn test_is_supported_linux_aarch64() {
-        let platform = Platform {
-            os: "linux".to_string(),
-            arch: "aarch64".to_string(),
-        };
-        assert!(platform.is_supported());
-    }
-
-    #[test]
-    fn test_is_supported_macos_x86_64() {
-        let platform = Platform {
-            os: "macos".to_string(),
-            arch: "x86_64".to_string(),
-        };
-        assert!(platform.is_supported());
-    }
-
-    #[test]
-    fn test_is_supported_macos_aarch64() {
-        let platform = Platform {
-            os: "macos".to_string(),
-            arch: "aarch64".to_string(),
-        };
-        assert!(platform.is_supported());
-    }
-
-    #[test]
-    fn test_is_supported_windows_x86_64() {
-        let platform = Platform {
-            os: "windows".to_string(),
-            arch: "x86_64".to_string(),
-        };
-        assert!(platform.is_supported());
-    }
-
-    #[test]
-    fn test_is_not_supported_freebsd() {
-        let platform = Platform {
-            os: "freebsd".to_string(),
-            arch: "x86_64".to_string(),
-        };
-        assert!(!platform.is_supported());
-    }
-
-    #[test]
-    fn test_is_not_supported_windows_aarch64() {
-        let platform = Platform {
-            os: "windows".to_string(),
-            arch: "aarch64".to_string(),
-        };
-        assert!(!platform.is_supported());
     }
 
     #[test]

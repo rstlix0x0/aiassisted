@@ -95,85 +95,12 @@ async fn test_manifest_diff_workflow() {
 
     // Verify diff
     assert!(diff.has_changes());
-    assert_eq!(diff.unchanged_files.len(), 1);
     assert_eq!(diff.modified_files.len(), 1);
     assert_eq!(diff.new_files.len(), 1);
 
     // Verify files to download
     let to_download = diff.files_to_download();
     assert_eq!(to_download.len(), 2); // 1 modified + 1 new
-}
-
-#[tokio::test]
-async fn test_checksum_verification_workflow() {
-    let fs = StdFileSystem::new();
-    let checksum = Sha2Checksum::new();
-    let temp_dir = TempDir::new().unwrap();
-
-    // Create test files
-    let file1_path = temp_dir.path().join("file1.txt");
-    let file2_path = temp_dir.path().join("file2.txt");
-
-    fs.write(&file1_path, "content1").await.unwrap();
-    fs.write(&file2_path, "content2").await.unwrap();
-
-    // Calculate checksums
-    let hash1 = checksum.sha256(b"content1");
-    let hash2 = checksum.sha256(b"content2");
-
-    // Create manifest with checksums
-    let manifest = Manifest {
-        version: "1.0.0".to_string(),
-        files: vec![
-            ManifestEntry {
-                path: PathBuf::from("file1.txt"),
-                checksum: hash1.clone(),
-            },
-            ManifestEntry {
-                path: PathBuf::from("file2.txt"),
-                checksum: hash2.clone(),
-            },
-        ],
-    };
-
-    // Verify checksums
-    let results = manifest
-        .verify_checksums(&checksum, &fs, temp_dir.path())
-        .unwrap();
-
-    // All should match
-    assert_eq!(results.len(), 2);
-    assert!(results[0].1); // file1 matches
-    assert!(results[1].1); // file2 matches
-}
-
-#[tokio::test]
-async fn test_checksum_verification_with_mismatch() {
-    let fs = StdFileSystem::new();
-    let checksum = Sha2Checksum::new();
-    let temp_dir = TempDir::new().unwrap();
-
-    // Create test file
-    let file_path = temp_dir.path().join("file.txt");
-    fs.write(&file_path, "actual content").await.unwrap();
-
-    // Create manifest with wrong checksum
-    let manifest = Manifest {
-        version: "1.0.0".to_string(),
-        files: vec![ManifestEntry {
-            path: PathBuf::from("file.txt"),
-            checksum: "wrong_checksum".to_string(),
-        }],
-    };
-
-    // Verify checksums
-    let results = manifest
-        .verify_checksums(&checksum, &fs, temp_dir.path())
-        .unwrap();
-
-    // Should not match
-    assert_eq!(results.len(), 1);
-    assert!(!results[0].1); // Mismatch
 }
 
 #[tokio::test]
@@ -316,15 +243,6 @@ async fn test_full_download_workflow_with_checksum_verification() {
     // Verify all files exist
     assert!(fs.exists(&temp_dir.path().join("file1.txt")));
     assert!(fs.exists(&temp_dir.path().join("subdir/file2.txt")));
-
-    // Verify using manifest's verify_checksums
-    let results = manifest
-        .verify_checksums(&checksum, &fs, temp_dir.path())
-        .unwrap();
-
-    assert_eq!(results.len(), 2);
-    assert!(results[0].1); // file1 matches
-    assert!(results[1].1); // file2 matches
 }
 
 #[tokio::test]
@@ -381,9 +299,8 @@ async fn test_update_workflow_with_partial_changes() {
     // Calculate diff
     let diff = old_manifest.diff(&new_manifest);
 
-    // Should have 1 modified, 1 unchanged
+    // Should have 1 modified, 0 new
     assert_eq!(diff.modified_files.len(), 1);
-    assert_eq!(diff.unchanged_files.len(), 1);
     assert_eq!(diff.new_files.len(), 0);
 
     // Files to download should only include the modified one

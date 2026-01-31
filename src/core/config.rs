@@ -20,9 +20,6 @@ pub trait ConfigStore: Send + Sync {
     /// Keys use dot notation (e.g., "default_tool", "verbosity").
     async fn get(&self, key: &str) -> Option<String>;
 
-    /// Set a specific configuration value by key.
-    async fn set(&self, key: &str, value: &str) -> Result<()>;
-
     /// Reset configuration to defaults.
     async fn reset(&self) -> Result<()>;
 

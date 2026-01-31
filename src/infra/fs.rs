@@ -26,26 +26,12 @@ impl FileSystem for StdFileSystem {
         Ok(fs::read_to_string(path).await?)
     }
 
-    async fn read_bytes(&self, path: &Path) -> Result<Vec<u8>> {
-        Ok(fs::read(path).await?)
-    }
-
     async fn write(&self, path: &Path, content: &str) -> Result<()> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await?;
         }
         let mut file = fs::File::create(path).await?;
         file.write_all(content.as_bytes()).await?;
-        file.flush().await?;
-        Ok(())
-    }
-
-    async fn write_bytes(&self, path: &Path, content: &[u8]) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).await?;
-        }
-        let mut file = fs::File::create(path).await?;
-        file.write_all(content).await?;
         file.flush().await?;
         Ok(())
     }
@@ -64,14 +50,6 @@ impl FileSystem for StdFileSystem {
 
     async fn create_dir_all(&self, path: &Path) -> Result<()> {
         Ok(fs::create_dir_all(path).await?)
-    }
-
-    async fn remove_file(&self, path: &Path) -> Result<()> {
-        Ok(fs::remove_file(path).await?)
-    }
-
-    async fn remove_dir_all(&self, path: &Path) -> Result<()> {
-        Ok(fs::remove_dir_all(path).await?)
     }
 
     async fn list_dir(&self, path: &Path) -> Result<Vec<PathBuf>> {
@@ -109,22 +87,6 @@ mod tests {
         // Read
         let content = fs.read(&file_path).await.unwrap();
         assert_eq!(content, "Hello, World!");
-    }
-
-    #[tokio::test]
-    async fn test_write_and_read_bytes() {
-        let fs = StdFileSystem::new();
-        let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("test.bin");
-
-        let data = vec![0u8, 1, 2, 3, 255];
-
-        // Write bytes
-        fs.write_bytes(&file_path, &data).await.unwrap();
-
-        // Read bytes
-        let content = fs.read_bytes(&file_path).await.unwrap();
-        assert_eq!(content, data);
     }
 
     #[tokio::test]
@@ -191,40 +153,6 @@ mod tests {
 
         assert!(fs.exists(&nested_dir));
         assert!(fs.is_dir(&nested_dir));
-    }
-
-    #[tokio::test]
-    async fn test_remove_file() {
-        let fs = StdFileSystem::new();
-        let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("to_delete.txt");
-
-        fs.write(&file_path, "delete me").await.unwrap();
-        assert!(fs.exists(&file_path));
-
-        fs.remove_file(&file_path).await.unwrap();
-        assert!(!fs.exists(&file_path));
-    }
-
-    #[tokio::test]
-    async fn test_remove_nonexistent_file() {
-        let fs = StdFileSystem::new();
-        let result = fs.remove_file(Path::new("/nonexistent/file.txt")).await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_remove_dir_all() {
-        let fs = StdFileSystem::new();
-        let temp_dir = TempDir::new().unwrap();
-        let dir_path = temp_dir.path().join("dir_to_remove");
-        let file_path = dir_path.join("file.txt");
-
-        fs.write(&file_path, "content").await.unwrap();
-        assert!(fs.exists(&dir_path));
-
-        fs.remove_dir_all(&dir_path).await.unwrap();
-        assert!(!fs.exists(&dir_path));
     }
 
     #[tokio::test]

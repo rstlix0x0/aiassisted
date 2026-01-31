@@ -8,13 +8,11 @@
 //!
 //! - [`types`] - Shared types (Error, Result, ToolType, DTOs)
 //! - [`infra`] - Infrastructure traits (FileSystem, HttpClient, Checksum, Logger)
-//! - [`content`] - Content domain traits (ManifestStore, ContentDownloader)
 //! - [`templates`] - Templates domain traits (TemplateEngine, TemplateResolver)
 //! - [`config`] - Config domain traits (ConfigStore)
 //! - [`selfupdate`] - Self-update domain traits (ReleaseProvider)
 
 pub mod config;
-pub mod content;
 pub mod infra;
 pub mod selfupdate;
 pub mod templates;

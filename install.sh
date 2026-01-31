@@ -381,6 +381,27 @@ install_binary() {
     fi
 }
 
+run_migration() {
+    INSTALL_PATH="$BIN_DIR/${BINARY_NAME}${BINARY_EXT}"
+    OLD_SOURCE_DIR="$HOME/.aiassisted/source"
+
+    # Check if old shell-based installation exists
+    if [ -d "$OLD_SOURCE_DIR" ]; then
+        printf "\n"
+        log_warn "Detected old shell-based installation"
+        log_info "Migrating to new Rust-based version..."
+        printf "\n"
+
+        # Run migration command
+        if "$INSTALL_PATH" migrate 2>&1; then
+            log_success "Migration completed successfully"
+        else
+            log_warn "Migration encountered issues (non-critical)"
+            log_info "You can manually run 'aiassisted migrate' later"
+        fi
+    fi
+}
+
 verify_installation() {
     INSTALL_PATH="$BIN_DIR/${BINARY_NAME}${BINARY_EXT}"
 
@@ -423,6 +444,11 @@ main() {
 
     # Install binary
     install_binary
+
+    printf "\n"
+
+    # Run migration if old installation detected
+    run_migration
 
     printf "\n"
 

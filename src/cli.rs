@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::core::ToolType;
+use aiassisted::core::ToolType;
 
 /// CLI tool for embedding AI assistant guidelines and templates into projects.
 #[derive(Parser, Debug)]
@@ -46,6 +46,9 @@ pub enum Commands {
 
     /// Update the CLI binary itself
     SelfUpdate,
+
+    /// Migrate from old shell-based version
+    Migrate,
 
     /// Show version information
     Version,
