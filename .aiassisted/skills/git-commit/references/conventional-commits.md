@@ -1,9 +1,4 @@
----
-description: Guidelines for writing commit messages using the Conventional Commits specification.
-globs: "**/*"
----
-
-# Conventional Commits Instructions
+# Conventional Commits Reference
 
 These instructions define the standard for commit messages in this workspace, based on the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification.
 
