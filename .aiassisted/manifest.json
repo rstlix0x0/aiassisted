@@ -1,5 +1,5 @@
 {
-  "version": "87d2583",
+  "version": "481683e",
   "files": [
     {
       "path": "config.toml.default",
@@ -38,6 +38,10 @@
       "checksum": "52074b13b0168c87c1fbed7528329df2b94c041b4e161801713dc7284ba4d8fd"
     },
     {
+      "path": "guidelines/ai/agentskills/agent-skills.guideline.md",
+      "checksum": "d49d2d75645f33b6bd0c3dd120cddcd887ea6fa74b740bc03db71c18f26e4dcd"
+    },
+    {
       "path": "guidelines/architecture/algebraic-data-types.md",
       "checksum": "558b09b2c97f47042210800905dfaa24cba366f43ed997da411952fe57f8f47b"
     },
@@ -70,6 +74,10 @@
       "checksum": "b14b3c04ef73f60e0eb9ef4d20724f028c44a6e91fd43c4d7203809bf83a5889"
     },
     {
+      "path": "guidelines/engineering/code-review-process.md",
+      "checksum": "193994516a6cb1a8927ce242f536ee9cc2bf4183ad0c5b05dda70954ca030df1"
+    },
+    {
       "path": "guidelines/rust/microsoft-rust-guidelines.md",
       "checksum": "8c3544c308ece663c73a1b4fcb72672bfdd5c1a2e161eb7ce511fdbec3d95858"
     },
@@ -82,6 +90,10 @@
       "checksum": "51fbcbf2e08da3d201db805965c37a2f0070d3ca2ed48b609a644eb3ac049961"
     },
     {
+      "path": "guidelines/rust/rust-code-review-guide.md",
+      "checksum": "f84fbae3549cf6ed13b43f1ed25a0501b0da633b4e514e5d5cecb1b4b88e0510"
+    },
+    {
       "path": "guidelines/rust/rust-dependency-management-guide.md",
       "checksum": "19f4b9819821693fa6242ef8fa41b31b37b8056d94101e5e65c1fc48737c2fa2"
     },
@@ -90,12 +102,20 @@
       "checksum": "9bb6994af5c574147808c949217c2cca8a47982714e32509d8950edf732306de"
     },
     {
+      "path": "guidelines/rust/rust-documentation-guide.md",
+      "checksum": "fa0f944f4361d8c294a25587414adf60730b2cea70a674d65983d19945306594"
+    },
+    {
       "path": "guidelines/rust/rust-factory-pattern-guide.md",
       "checksum": "fa4689d78a7e8fd480087c3e348702948f68dbd9a196c2ef33ee5fc8892eff82"
     },
     {
       "path": "guidelines/rust/rust-main-lib-crate-structure-guide.md",
       "checksum": "3c356120ee72f0d74e1024f149540c1f927b549831bede77dc4fecf2441023ce"
+    },
+    {
+      "path": "guidelines/rust/rust-policy-guide.md",
+      "checksum": "55ce9feeb35a47a011a6c479de76ac22b3cd9485a995dd387a7511de208bffdc"
     },
     {
       "path": "guidelines/rust/rust-smart-pointers-guide.md",
@@ -110,10 +130,6 @@
       "checksum": "108cb369cbf71df6a2cd94e456646a6e07f1bfd21801a0c345ec99f80f1220fb"
     },
     {
-      "path": "instructions/conventional-commits.instructions.md",
-      "checksum": "7fe291f822339f4d7e4f22c9f4f7b030b40f46f1d933bcb4ace10e817358e42f"
-    },
-    {
       "path": "instructions/multi-project-memory-bank.instructions.md",
       "checksum": "63b59c35ff7fc5b76269d1b055ad72cf7cafb5fae35b7ca1a92228fa47ca0a17"
     },
@@ -126,8 +142,32 @@
       "checksum": "3f5cb0caf24c08d358d814629a61f4ed8f97486d85e9d78c8fcb73c5b61bb5ba"
     },
     {
-      "path": "prompts/git.commit.prompt.md",
-      "checksum": "8fa9bfc6c62e81df4fe310abfcaca393c6eff230ac6f87dd3f4b246ad8682ea8"
+      "path": "skills/doc-code/SKILL.md",
+      "checksum": "ce5970256153228fb2c0686472942e0be74c87954dccce3f57fbe6db2a157da6"
+    },
+    {
+      "path": "skills/doc-project/SKILL.md",
+      "checksum": "73f5ec099f5a79ee8e215dccf7f9cf77de267b8f6508bf8503afaab4907652f1"
+    },
+    {
+      "path": "skills/git-commit/SKILL.md",
+      "checksum": "dc59a8a3129cb8a22e1a1a47a047ab7a176f75f6573bfdc0dc2eb224bf97faf2"
+    },
+    {
+      "path": "skills/git-commit/references/conventional-commits.md",
+      "checksum": "7dce4b5b6715b200a8ced3915105a1c640f59ace44d68deadab00e1672d9b7e7"
+    },
+    {
+      "path": "skills/policy-rust/SKILL.md",
+      "checksum": "d231e2fa17bed07c54dfaeb037e8409e431e3372171400f799689e0f5c0f3403"
+    },
+    {
+      "path": "skills/review-codes/SKILL.md",
+      "checksum": "e8cdf9c984dff277f4552b5edc7985c77cd8f48046200b20969f8351a2bb7363"
+    },
+    {
+      "path": "skills/review-rust/SKILL.md",
+      "checksum": "7b9a8b09e9f8bdfa65d1a70806e2c333e52964a89c5560302078a9679cf7aeda"
     },
     {
       "path": "templates/README.md",
