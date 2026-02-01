@@ -68,7 +68,7 @@ impl MigrateCommand {
         if report.old_config_found {
             logger.info("Migrating configuration...");
             let old_config_contents = fs.read(&old_config_path).await?;
-            let shell_config = ShellConfig::from_str(&old_config_contents)?;
+            let shell_config = ShellConfig::parse(&old_config_contents)?;
             let new_config = shell_config.to_app_config();
 
             config_store.save(&new_config).await?;
@@ -137,6 +137,7 @@ impl MigrateCommand {
     }
 
     /// Recursively copy a directory.
+    #[allow(clippy::only_used_in_recursion)]
     fn copy_dir_recursive<'a, F: FileSystem>(
         &'a self,
         fs: &'a F,
@@ -151,7 +152,7 @@ impl MigrateCommand {
                 let file_name = entry
                     .file_name()
                     .ok_or_else(|| crate::core::types::Error::Io(
-                        std::io::Error::new(std::io::ErrorKind::Other, "Invalid file name")
+                        std::io::Error::other("Invalid file name")
                     ))?;
                 let dest = to.join(file_name);
 
@@ -167,6 +168,7 @@ impl MigrateCommand {
     }
 
     /// Recursively remove a directory.
+    #[allow(clippy::only_used_in_recursion)]
     fn remove_dir_recursive<'a, F: FileSystem>(
         &'a self,
         fs: &'a F,

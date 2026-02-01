@@ -56,7 +56,7 @@ fn default_true() -> bool {
 
 impl ShellConfig {
     /// Parse old TOML config from string.
-    pub fn from_str(contents: &str) -> Result<Self> {
+    pub fn parse(contents: &str) -> Result<Self> {
         toml::from_str(contents)
             .map_err(|e| Error::Parse(format!("Failed to parse shell config: {}", e)))
     }
@@ -120,7 +120,7 @@ repo = "rstlix0x0/aiassisted"
 ref = ""
 "#;
 
-        let config = ShellConfig::from_str(toml).unwrap();
+        let config = ShellConfig::parse(toml).unwrap();
         assert_eq!(config.general.default_runtime, "shell");
         assert_eq!(config.general.verbosity, 2);
         assert!(!config.install.auto_update);
@@ -140,7 +140,7 @@ auto_update = true
 prefer_project = true
 "#;
 
-        let config = ShellConfig::from_str(toml).unwrap();
+        let config = ShellConfig::parse(toml).unwrap();
         assert_eq!(config.general.default_runtime, "auto");
         assert_eq!(config.general.verbosity, 1); // default
         assert!(config.install.auto_update);
@@ -156,7 +156,7 @@ prefer_project = true
 
 [templates]
 "#;
-        let config = ShellConfig::from_str(toml).unwrap();
+        let config = ShellConfig::parse(toml).unwrap();
         assert_eq!(config.general.default_runtime, "auto"); // default
         assert_eq!(config.general.verbosity, 1);
         assert!(config.install.auto_update);
@@ -166,7 +166,7 @@ prefer_project = true
     #[test]
     fn test_parse_invalid_toml() {
         let toml = "invalid { toml";
-        let result = ShellConfig::from_str(toml);
+        let result = ShellConfig::parse(toml);
         assert!(result.is_err());
     }
 

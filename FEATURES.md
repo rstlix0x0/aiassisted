@@ -7,8 +7,8 @@ Complete feature reference for `aiassisted` v0.2.0
 `aiassisted` is a Rust CLI tool that embeds AI engineering guidelines into your projects. All features are tested and production-ready.
 
 **Quick Stats:**
-- **30+ Commands** - Full CLI interface
-- **257 Tests** - 215 unit + 42 integration tests
+- **16 Commands** - Full CLI interface
+- **27 Tests** - Core functionality tested
 - **5 Platforms** - Linux, macOS, Windows (x64 + ARM64)
 - **Zero Warnings** - Strict code quality standards
 - **<50ms Startup** - Native Rust performance
@@ -172,252 +172,86 @@ aiassisted update --path=/path/to/project
 
 ---
 
-## Templates Domain
+## Skills Domain
 
-Manage AI skill and agent templates.
+Manage AI skills for Claude Code and OpenCode.
 
 ### setup-skills
-**Set up AI skills (slash commands)**
+**Set up AI skills (copy to tool directory)**
 
 ```bash
 aiassisted setup-skills
 aiassisted setup-skills --tool=claude
 aiassisted setup-skills --tool=opencode
 aiassisted setup-skills --dry-run
+aiassisted setup-skills --force
 ```
 
 **What it does:**
-1. Detects AI tool (Claude Code or OpenCode) or uses `--tool`
-2. Resolves templates (project overrides global)
-3. Finds skill templates (*.SKILL.md.template)
-4. Substitutes variables ({{PROJECT_ROOT}}, {{GUIDELINES_LIST}})
-5. Writes to `.claude/commands/` or `.opencode/skills/`
+1. Auto-detects AI tool (Claude Code or OpenCode) or uses `--tool`
+2. Finds skills in `.aiassisted/skills/`
+3. Copies skill directories to tool's skills folder:
+   - Claude Code: `.claude/skills/`
+   - OpenCode: `.opencode/skills/`
+4. Preserves directory structure (including `references/` subdirectories)
 
 **Options:**
 - `--tool=TYPE` - Specify tool: `auto` (default), `claude`, `opencode`
-- `--dry-run` - Preview what would be created
-- `-v, --verbose` - Show template resolution details
+- `--dry-run` - Preview what would be copied
+- `--force` - Overwrite existing skills
 
 **Output:**
 ```
 [INFO] Auto-detected tool: claude
 [INFO] Setting up skills for claude
-[INFO] Found 2 skill template(s) for claude
-[INFO] Generating skill: git-commit.SKILL.md
-[OK] Created: ./.claude/commands/git-commit.SKILL.md
-[INFO] Generating skill: review-rust.SKILL.md
-[OK] Created: ./.claude/commands/review-rust.SKILL.md
-[OK] Successfully generated 2 skill(s)
+[INFO] Found 6 skill(s)
+[OK] Copied: git-commit
+[OK] Copied: review-rust
+[OK] Copied: doc-code
+[OK] Copied: doc-project
+[OK] Copied: review-codes
+[OK] Copied: policy-rust
+[OK] Setup complete: 6 copied, 0 skipped
 ```
 
-**Skills created:**
-- `git-commit.SKILL.md` - Conventional commit messages
-- `review-rust.SKILL.md` - Rust code review with guidelines
-
-**Template variables:**
-- `{{PROJECT_ROOT}}` → Absolute path to project
-- `{{GUIDELINES_LIST}}` → List of all guideline files
-- `{{TOOL_TYPE}}` → claude or opencode
+**Available skills:**
+- `git-commit` - Conventional commit messages
+- `review-rust` - Rust code review
+- `doc-code` - Code documentation
+- `doc-project` - Project documentation
+- `review-codes` - General code review
+- `policy-rust` - Rust coding policies
 
 ---
 
-### setup-agents
-**Set up custom AI agents (subagents)**
+### skills list
+**List available skills**
 
 ```bash
-aiassisted setup-agents
-aiassisted setup-agents --tool=claude
-aiassisted setup-agents --dry-run
+aiassisted skills list
+aiassisted skills list --tool=claude
 ```
 
 **What it does:**
-1. Auto-detects AI tool or uses `--tool`
-2. Resolves agent templates
-3. Substitutes variables
-4. Writes to `.claude/agents/` or `.opencode/agents/`
+1. Lists skills available in `.aiassisted/skills/`
+2. Shows installation status for each skill
 
 **Options:**
-- Same as `setup-skills`
+- `--tool=TYPE` - Specify tool to check installation status
 
 **Output:**
 ```
-[INFO] Auto-detected tool: claude
-[INFO] Setting up agents for claude
-[INFO] Found 3 agent template(s) for claude
-[INFO] Generating agent: ai-knowledge-architecture.md
-[OK] Created: ./.claude/agents/ai-knowledge-architecture.md
-[INFO] Generating agent: ai-knowledge-rust.md
-[OK] Created: ./.claude/agents/ai-knowledge-rust.md
-[INFO] Generating agent: git-commit.md
-[OK] Created: ./.claude/agents/git-commit.md
-[OK] Successfully generated 3 agent(s)
-```
-
-**Agents created:**
-- `ai-knowledge-architecture.md` - Architecture expert
-- `ai-knowledge-rust.md` - Rust expert
-- `git-commit.md` - Git commit helper
-
----
-
-### templates list
-**List available templates**
-
-```bash
-aiassisted templates list
-aiassisted templates list --tool=claude
-```
-
-**What it does:**
-1. Auto-detects tool or uses `--tool`
-2. Resolves templates (project then global)
-3. Lists skills and agents separately
-
-**Options:**
-- `--tool=TYPE` - Filter by tool type
-
-**Output:**
-```
-[INFO] Auto-detected tool: claude
-[INFO] Available templates for claude:
-
-Skills:
-[INFO]   - git-commit.SKILL.md
-[INFO]   - review-rust.SKILL.md
-
-Agents:
-[INFO]   - ai-knowledge-architecture.md
-[INFO]   - ai-knowledge-rust.md
-[INFO]   - git-commit.md
-```
-
----
-
-### templates show
-**Show specific template content**
-
-```bash
-aiassisted templates show git-commit.SKILL.md
-aiassisted templates show review-rust.SKILL.md --tool=claude
-```
-
-**What it does:**
-1. Resolves template path (project overrides global)
-2. Displays template content with variables
-3. Shows template location
-
-**Output:**
-```
-[INFO] Showing template: git-commit.SKILL.md
-
----
-name: git-commit
-description: Commit changes following conventional commits standard
----
-
-# Git Commit Skill
-
-[Template content with {{VARIABLES}}]
-
-[INFO] Template path: /project/.aiassisted/templates/skills/claude/git-commit.SKILL.md.template
-```
-
----
-
-### templates path
-**Show template directory paths**
-
-```bash
-aiassisted templates path
-```
-
-**What it does:**
-Shows both project and global template directories.
-
-**Output:**
-```
-[INFO] Template directories:
-[INFO]   Project: /path/to/project/.aiassisted/templates
-[INFO]   Global:  /Users/user/.aiassisted/templates
-```
-
-**Resolution order:**
-1. Project templates (`./.aiassisted/templates/`) - checked first
-2. Global templates (`~/.aiassisted/templates/`) - fallback
-
----
-
-### templates init
-**Initialize project templates**
-
-```bash
-aiassisted templates init
-aiassisted templates init --force
-```
-
-**What it does:**
-1. Checks if project templates directory exists
-2. Copies global templates to project
-3. Allows customization per-project
-
-**Options:**
-- `--force` - Overwrite existing templates
-
-**Output:**
-```
-[INFO] Initializing project templates
-[OK] Initialized templates directory with 8 file(s): ./.aiassisted/templates
-```
-
-**Use case:**
-Customize templates for specific project, then commit to share with team.
-
----
-
-### templates sync
-**Sync project templates with global**
-
-```bash
-aiassisted templates sync
-aiassisted templates sync --force
-```
-
-**What it does:**
-1. Compares project vs global templates
-2. Shows files that differ (modification time)
-3. Updates project templates from global
-
-**Options:**
-- `--force` - Skip confirmation
-
-**Output:**
-```
-[INFO] Syncing templates
-[INFO] Updated: skills/claude/git-commit.SKILL.md.template
-[OK] Synced 1 file(s)
-```
-
----
-
-### templates diff
-**Show differences between templates**
-
-```bash
-aiassisted templates diff git-commit.SKILL.md
-```
-
-**What it does:**
-1. Compares project vs global template
-2. Shows diff if different
-3. Warns if project template not found
-
-**Output:**
-```
-[INFO] Diffing template: git-commit.SKILL.md
---- Global: ~/.aiassisted/templates/skills/claude/git-commit.SKILL.md.template
-+++ Project: ./.aiassisted/templates/skills/claude/git-commit.SKILL.md.template
-@@ -10,3 +10,4 @@
- ...
+[INFO] Skills source: .aiassisted/skills
+[INFO] Target directory: .claude/skills
+[INFO]
+[INFO] Available skills (6):
+[INFO]
+[INFO]   - doc-code
+[INFO]   - doc-project
+[INFO]   - git-commit [installed]
+[INFO]   - policy-rust
+[INFO]   - review-codes
+[INFO]   - review-rust [installed]
 ```
 
 ---
@@ -617,13 +451,14 @@ Available for all commands:
 - ✅ SHA256 checksum verification
 - ✅ Smart incremental updates
 
-### Template System
+### Skills System
 - ✅ Auto-detect AI tool (Claude Code, OpenCode)
 - ✅ Manual tool selection
-- ✅ Template variable substitution
-- ✅ Cascading resolution (project overrides global)
-- ✅ List/show/init/sync/diff templates
+- ✅ Copy skills to tool directory
+- ✅ Preserve skill directory structure
+- ✅ Force overwrite option
 - ✅ Dry-run mode
+- ✅ List available skills
 
 ### Configuration
 - ✅ TOML-based configuration
@@ -651,12 +486,11 @@ Available for all commands:
 |-----------|------|-------|
 | Startup | <50ms | Cold start |
 | version | <10ms | Instant |
-| install (43 files) | ~3-5s | Network dependent |
+| install (42 files) | ~3-5s | Network dependent |
 | check | ~1-2s | HTTP request |
 | update | ~2-4s | Only changed files |
-| setup-skills | <100ms | Local operation |
-| setup-agents | <100ms | Local operation |
-| templates list | <50ms | File scan |
+| setup-skills | <100ms | Local copy operation |
+| skills list | <50ms | Directory scan |
 
 **Memory usage:** <20MB peak (during install)
 
@@ -752,18 +586,18 @@ End-to-end validation via `scripts/smoke-test.sh`:
 |----------|----------|--------|
 | Core commands | 4 | ✅ Complete |
 | Content domain | 3 | ✅ Complete |
-| Templates domain | 8 | ✅ Complete |
+| Skills domain | 2 | ✅ Complete |
 | Config domain | 5 | ✅ Complete |
 | Self-update | 1 | ✅ Complete |
 | Migration | 1 | ✅ Complete |
-| **Total** | **22 commands** | **✅ Production Ready** |
+| **Total** | **16 commands** | **✅ Production Ready** |
 
 **Additional features:**
-- 257 comprehensive tests
+- 27 core tests (config, content, migration)
 - 5 platform binaries
 - cargo-dist automated releases
 - Migration from shell version
-- Smoke test suite
+- 6 built-in skills
 
 ---
 

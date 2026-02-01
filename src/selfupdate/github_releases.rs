@@ -67,8 +67,9 @@ impl<H: HttpClient> GithubReleasesProvider<H> {
             .find(|asset| asset.name == asset_name)
             .ok_or_else(|| {
                 Error::NotFound(format!(
-                    "No asset found for platform {} (expected: {})",
-                    format!("{}-{}", self.platform.os, self.platform.arch),
+                    "No asset found for platform {}-{} (expected: {})",
+                    self.platform.os,
+                    self.platform.arch,
                     asset_name
                 ))
             })

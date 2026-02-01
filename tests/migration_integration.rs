@@ -42,7 +42,7 @@ prefer_project = true
 
     // Instead, let's verify the config parsing works
     let shell_config =
-        aiassisted::migration::shell_config::ShellConfig::from_str(old_config_content).unwrap();
+        aiassisted::migration::shell_config::ShellConfig::parse(old_config_content).unwrap();
     let new_config = shell_config.to_app_config();
 
     assert_eq!(new_config.default_tool, ToolType::Auto);
@@ -90,7 +90,7 @@ prefer_project = false
         );
 
         let shell_config =
-            aiassisted::migration::shell_config::ShellConfig::from_str(&config_content).unwrap();
+            aiassisted::migration::shell_config::ShellConfig::parse(&config_content).unwrap();
         let new_config = shell_config.to_app_config();
 
         assert_eq!(
@@ -182,7 +182,7 @@ ref = ""
 "#;
 
     let config =
-        aiassisted::migration::shell_config::ShellConfig::from_str(config_with_extras).unwrap();
+        aiassisted::migration::shell_config::ShellConfig::parse(config_with_extras).unwrap();
     assert_eq!(config.general.default_runtime, "auto");
     assert_eq!(config.general.verbosity, 1);
     assert!(config.install.auto_update);

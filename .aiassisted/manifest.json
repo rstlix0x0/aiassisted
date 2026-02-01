@@ -1,5 +1,5 @@
 {
-  "version": "481683e",
+  "version": "a3a5daa",
   "files": [
     {
       "path": "config.toml.default",
@@ -168,50 +168,6 @@
     {
       "path": "skills/review-rust/SKILL.md",
       "checksum": "7b9a8b09e9f8bdfa65d1a70806e2c333e52964a89c5560302078a9679cf7aeda"
-    },
-    {
-      "path": "templates/README.md",
-      "checksum": "64e6470d57ed9a7d2196235da8815b7f82940edacedc9f0c72d8f54536467119"
-    },
-    {
-      "path": "templates/agents/claude/ai-knowledge-architecture.md.template",
-      "checksum": "2d615d6b7925eb4b0e2546b072c8db7ebf6c75e68bf435039ec2eda8989ca6cc"
-    },
-    {
-      "path": "templates/agents/claude/ai-knowledge-rust.md.template",
-      "checksum": "9a754a256969c8225111b8176919e68efde78823b0ea6c645805a75bd8a42cc8"
-    },
-    {
-      "path": "templates/agents/claude/git-commit.md.template",
-      "checksum": "9306a0a7a96c0500772609dbd0eaaa942e63d3262397213c4d13f5467a8e0a78"
-    },
-    {
-      "path": "templates/agents/opencode/ai-knowledge-architecture.md.template",
-      "checksum": "3808876f543dd829fe5c75dbc1361e8f2e6b4f9e1c97456500a91f5e9880eba9"
-    },
-    {
-      "path": "templates/agents/opencode/ai-knowledge-rust.md.template",
-      "checksum": "6d48ee43eebdbd02436ca6e44bbec63730bcdb5f05f4439f3886e82664934f98"
-    },
-    {
-      "path": "templates/agents/opencode/git-commit.md.template",
-      "checksum": "4abe0b74ad977ae1c02298e226a487a94a0d42650a1865e6140cb5737136a078"
-    },
-    {
-      "path": "templates/skills/claude/git-commit.SKILL.md.template",
-      "checksum": "3761e91987dfa56124826441a99c98f56a7916fd702671e359dac7353228b161"
-    },
-    {
-      "path": "templates/skills/claude/review-rust.SKILL.md.template",
-      "checksum": "f8ffad9bdf15fcb9dadafa9794f4de8a5f6501706e78a74d8675ee02a074f6cb"
-    },
-    {
-      "path": "templates/skills/opencode/git-commit.SKILL.md.template",
-      "checksum": "190844fe237b42d54349d9f75d66756d5ecd8b78157e98ad9390a535e7566f34"
-    },
-    {
-      "path": "templates/skills/opencode/review-rust.SKILL.md.template",
-      "checksum": "8a71773dfc025fb051113487de848dba84abc357201b0a65d07006726289966d"
     }
   ]
 }

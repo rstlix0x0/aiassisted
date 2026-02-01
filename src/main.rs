@@ -6,7 +6,7 @@ use clap::Parser;
 mod cli;
 
 // Import from library crate using package name
-use cli::{Cli, Commands, ConfigCommands, TemplatesCommands};
+use cli::{Cli, Commands, ConfigCommands, SkillsCommands};
 use aiassisted::config::{
     EditCommand as ConfigEditCommand, GetCommand as ConfigGetCommand,
     PathCommand as ConfigPathCommand, ResetCommand as ConfigResetCommand,
@@ -17,12 +17,7 @@ use aiassisted::core::infra::{Checksum, FileSystem, HttpClient, Logger};
 use aiassisted::infra::{ColoredLogger, ReqwestClient, Sha2Checksum, StdFileSystem};
 use aiassisted::migration::MigrateCommand;
 use aiassisted::selfupdate::{GithubReleasesProvider, SelfUpdateCommand};
-use aiassisted::templates::{
-    ListTemplatesCommand, SetupAgentsCommand, SetupSkillsCommand, ShowTemplateCommand,
-    TemplatesDiffCommand, TemplatesInitCommand, TemplatesPathCommand, TemplatesSyncCommand,
-};
-use aiassisted::templates::engine::SimpleTemplateEngine;
-use aiassisted::templates::resolver::CascadingResolver;
+use aiassisted::skills::{SetupSkillsCommand, SkillsListCommand};
 
 /// Application context holding all infrastructure dependencies.
 /// Uses static dispatch (generics) for zero-cost abstractions.
@@ -95,70 +90,23 @@ async fn main() {
             let cmd = SetupSkillsCommand {
                 tool,
                 dry_run: args.dry_run,
+                force: args.force,
             };
+            let project_path =
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-            // Create template dependencies
-            let engine = SimpleTemplateEngine::new();
-            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-            let resolver = CascadingResolver::new(
-                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
-                home_dir,
-            );
-            let project_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-
-            cmd.execute(&ctx.fs, &engine, &resolver, &ctx.logger, &project_path).await
+            cmd.execute(&ctx.fs, &ctx.logger, &project_path).await
         }
 
-        Commands::SetupAgents(args) => {
-            let tool: aiassisted::core::ToolType = args.tool.into();
-            let cmd = SetupAgentsCommand {
-                tool,
-                dry_run: args.dry_run,
-            };
-
-            // Create template dependencies
-            let engine = SimpleTemplateEngine::new();
-            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-            let resolver = CascadingResolver::new(
-                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
-                home_dir,
-            );
-            let project_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-
-            cmd.execute(&ctx.fs, &engine, &resolver, &ctx.logger, &project_path).await
-        }
-
-        Commands::Templates(args) => {
-            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-            let project_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-            let resolver = CascadingResolver::new(project_path.clone(), home_dir);
+        Commands::Skills(args) => {
+            let project_path =
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
             match args.command {
-                TemplatesCommands::List { tool } => {
+                SkillsCommands::List { tool } => {
                     let tool: aiassisted::core::ToolType = tool.into();
-                    let cmd = ListTemplatesCommand { tool };
-                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
-                }
-                TemplatesCommands::Show { path } => {
-                    let cmd = ShowTemplateCommand { path };
-                    // Default to Claude for show command
-                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, aiassisted::core::ToolType::Claude).await
-                }
-                TemplatesCommands::Init { force } => {
-                    let cmd = TemplatesInitCommand { force };
-                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
-                }
-                TemplatesCommands::Sync { force } => {
-                    let cmd = TemplatesSyncCommand { force };
-                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &project_path).await
-                }
-                TemplatesCommands::Path => {
-                    let cmd = TemplatesPathCommand;
-                    cmd.execute(&resolver, &ctx.logger, &project_path).await
-                }
-                TemplatesCommands::Diff { path } => {
-                    let cmd = TemplatesDiffCommand { path };
-                    cmd.execute(&ctx.fs, &resolver, &ctx.logger, &ctx.checksum, &project_path).await
+                    let cmd = SkillsListCommand { tool };
+                    cmd.execute(&ctx.fs, &ctx.logger, &project_path).await
                 }
             }
         }

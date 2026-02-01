@@ -146,25 +146,24 @@ impl SelfUpdateCommand {
                 .by_index(i)
                 .map_err(|e| Error::Parse(format!("Failed to read zip entry: {}", e)))?;
 
-            if let Some(filename) = entry.name().rsplit('/').next() {
-                if filename.starts_with("aiassisted")
-                    && !filename.ends_with(".md")
-                    && !filename.ends_with(".txt")
+            if let Some(filename) = entry.name().rsplit('/').next().filter(|f|
+                f.starts_with("aiassisted")
+                    && !f.ends_with(".md")
+                    && !f.ends_with(".txt")
                     && !entry.is_dir()
-                {
-                    let dest_path = temp_dir.join(filename);
-                    let mut outfile = fs::File::create(&dest_path)
-                        .map_err(Error::from)?;
+            ) {
+                let dest_path = temp_dir.join(filename);
+                let mut outfile = fs::File::create(&dest_path)
+                    .map_err(Error::from)?;
 
-                    std::io::copy(&mut entry, &mut outfile)
-                        .map_err(Error::from)?;
+                std::io::copy(&mut entry, &mut outfile)
+                    .map_err(Error::from)?;
 
-                    // Make executable on Unix
-                    #[cfg(unix)]
-                    Self::make_executable(&dest_path)?;
+                // Make executable on Unix
+                #[cfg(unix)]
+                Self::make_executable(&dest_path)?;
 
-                    return Ok(dest_path);
-                }
+                return Ok(dest_path);
             }
         }
 

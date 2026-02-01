@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`aiassisted` is a CLI tool that embeds a `.aiassisted/` directory into projects. This directory contains curated guidelines, instructions, prompts, and templates that AI assistants can reference for consistent, context-aware assistance.
+`aiassisted` is a CLI tool that embeds a `.aiassisted/` directory into projects. This directory contains curated guidelines, instructions, prompts, and skills that AI assistants can reference for consistent, context-aware assistance.
 
 **Note:** This project is being rewritten from POSIX shell to Rust. See `plans/README.md` for progress.
 
@@ -61,7 +61,6 @@ src/
 │   ├── types.rs     # Error, ToolType, Result, DTOs
 │   ├── infra.rs     # FileSystem, HttpClient, Checksum, Logger
 │   ├── content.rs   # ManifestStore, ContentDownloader
-│   ├── templates.rs # TemplateEngine, TemplateResolver
 │   ├── config.rs    # ConfigStore
 │   └── selfupdate.rs# ReleaseProvider
 ├── infra/           # Shared infrastructure implementations
@@ -70,9 +69,10 @@ src/
 │   ├── checksum.rs  # Sha2Checksum
 │   └── logger.rs    # ColoredLogger
 ├── content/         # Content domain (install, update, check)
-├── templates/       # Templates domain (setup-skills, setup-agents)
+├── skills/          # Skills domain (setup-skills, skills list)
 ├── config/          # Config domain
-└── selfupdate/      # Self-update domain
+├── selfupdate/      # Self-update domain
+└── migration/       # Migration domain
 ```
 
 ### Key Design Decisions
@@ -108,7 +108,7 @@ The `.aiassisted/` directory contains:
 - `guidelines/` - Architecture patterns, documentation standards, language-specific guides
 - `instructions/` - AI agent behavior rules and constraints
 - `prompts/` - Reusable prompt templates (e.g., commit messages)
-- `templates/` - Skill and agent templates for OpenCode and Claude Code
+- `skills/` - Pre-built skills for OpenCode and Claude Code
 - `config/` - Configuration documentation
 
 ## Workflow for Updating Guidelines

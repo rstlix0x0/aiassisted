@@ -32,14 +32,11 @@ pub enum Commands {
     /// Check if updates are available
     Check(CheckArgs),
 
-    /// Set up AI skills (slash commands)
+    /// Set up AI skills (copy to tool directory)
     SetupSkills(SetupSkillsArgs),
 
-    /// Set up custom AI agents
-    SetupAgents(SetupAgentsArgs),
-
-    /// Manage template files
-    Templates(TemplatesArgs),
+    /// Manage skills
+    Skills(SkillsArgs),
 
     /// Manage configuration
     Config(ConfigArgs),
@@ -92,64 +89,27 @@ pub struct SetupSkillsArgs {
     /// Show what would be created without creating
     #[arg(long)]
     pub dry_run: bool,
-}
 
-/// Arguments for the setup-agents command.
-#[derive(Parser, Debug)]
-pub struct SetupAgentsArgs {
-    /// AI tool to generate agents for
-    #[arg(short, long, value_enum, default_value = "auto")]
-    pub tool: CliToolType,
-
-    /// Show what would be created without creating
+    /// Overwrite existing skills
     #[arg(long)]
-    pub dry_run: bool,
+    pub force: bool,
 }
 
-/// Arguments for the templates command.
+/// Arguments for the skills command.
 #[derive(Parser, Debug)]
-pub struct TemplatesArgs {
+pub struct SkillsArgs {
     #[command(subcommand)]
-    pub command: TemplatesCommands,
+    pub command: SkillsCommands,
 }
 
-/// Templates subcommands.
+/// Skills subcommands.
 #[derive(Subcommand, Debug)]
-pub enum TemplatesCommands {
-    /// List available templates
+pub enum SkillsCommands {
+    /// List available skills
     List {
-        /// AI tool to list templates for
+        /// AI tool to list skills for
         #[arg(short, long, value_enum, default_value = "auto")]
         tool: CliToolType,
-    },
-
-    /// Show a specific template
-    Show {
-        /// Template path
-        path: String,
-    },
-
-    /// Initialize project templates from global
-    Init {
-        /// Force overwrite existing templates
-        #[arg(short, long)]
-        force: bool,
-    },
-
-    /// Sync project templates with global
-    Sync {
-        /// Force overwrite without confirmation
-        #[arg(short, long)]
-        force: bool,
-    },
-
-    /// Show template directory paths
-    Path,
-
-    /// Show differences between project and global templates
-    Diff {
-        /// Optional specific template path to diff
-        path: Option<String>,
     },
 }
 
