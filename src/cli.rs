@@ -105,11 +105,41 @@ pub struct SkillsArgs {
 /// Skills subcommands.
 #[derive(Subcommand, Debug)]
 pub enum SkillsCommands {
+    /// Set up AI skills (copy to tool directory)
+    Setup {
+        /// AI tool to generate skills for
+        #[arg(short, long, value_enum, default_value = "auto")]
+        tool: CliToolType,
+
+        /// Show what would be created without creating
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Overwrite existing skills
+        #[arg(long)]
+        force: bool,
+    },
+
     /// List available skills
     List {
         /// AI tool to list skills for
         #[arg(short, long, value_enum, default_value = "auto")]
         tool: CliToolType,
+    },
+
+    /// Update installed skills (sync changes from source)
+    Update {
+        /// AI tool to update skills for
+        #[arg(short, long, value_enum, default_value = "auto")]
+        tool: CliToolType,
+
+        /// Show what would be updated without updating
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Force update all files (ignore checksums)
+        #[arg(long)]
+        force: bool,
     },
 }
 

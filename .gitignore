@@ -49,3 +49,4 @@ test-*/
 # Added by cargo
 
 /target
+.claude/

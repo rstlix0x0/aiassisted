@@ -1,14 +1,14 @@
 # Features
 
-Complete feature reference for `aiassisted` v0.2.0
+Complete feature reference for `aiassisted` v0.3.0
 
 ## Overview
 
 `aiassisted` is a Rust CLI tool that embeds AI engineering guidelines into your projects. All features are tested and production-ready.
 
 **Quick Stats:**
-- **16 Commands** - Full CLI interface
-- **27 Tests** - Core functionality tested
+- **17 Commands** - Full CLI interface
+- **138 Tests** - Comprehensive test coverage
 - **5 Platforms** - Linux, macOS, Windows (x64 + ARM64)
 - **Zero Warnings** - Strict code quality standards
 - **<50ms Startup** - Native Rust performance
@@ -176,15 +176,15 @@ aiassisted update --path=/path/to/project
 
 Manage AI skills for Claude Code and OpenCode.
 
-### setup-skills
+### skills setup
 **Set up AI skills (copy to tool directory)**
 
 ```bash
-aiassisted setup-skills
-aiassisted setup-skills --tool=claude
-aiassisted setup-skills --tool=opencode
-aiassisted setup-skills --dry-run
-aiassisted setup-skills --force
+aiassisted skills setup
+aiassisted skills setup --tool=claude
+aiassisted skills setup --tool=opencode
+aiassisted skills setup --dry-run
+aiassisted skills setup --force
 ```
 
 **What it does:**
@@ -204,14 +204,15 @@ aiassisted setup-skills --force
 ```
 [INFO] Auto-detected tool: claude
 [INFO] Setting up skills for claude
-[INFO] Found 6 skill(s)
+[INFO] Found 7 skill(s)
 [OK] Copied: git-commit
 [OK] Copied: review-rust
 [OK] Copied: doc-code
 [OK] Copied: doc-project
 [OK] Copied: review-codes
 [OK] Copied: policy-rust
-[OK] Setup complete: 6 copied, 0 skipped
+[OK] Copied: memorybank-setup
+[OK] Setup complete: 7 copied, 0 skipped
 ```
 
 **Available skills:**
@@ -221,6 +222,9 @@ aiassisted setup-skills --force
 - `doc-project` - Project documentation
 - `review-codes` - General code review
 - `policy-rust` - Rust coding policies
+- `memorybank-setup` - Initialize memory bank structure
+
+**Deprecation notice:** The `setup-skills` command is deprecated. Use `skills setup` instead.
 
 ---
 
@@ -244,15 +248,75 @@ aiassisted skills list --tool=claude
 [INFO] Skills source: .aiassisted/skills
 [INFO] Target directory: .claude/skills
 [INFO]
-[INFO] Available skills (6):
+[INFO] Available skills (7):
 [INFO]
 [INFO]   - doc-code
 [INFO]   - doc-project
 [INFO]   - git-commit [installed]
+[INFO]   - memorybank-setup
 [INFO]   - policy-rust
 [INFO]   - review-codes
 [INFO]   - review-rust [installed]
 ```
+
+---
+
+### skills update
+**Update installed skills (sync changes from source)**
+
+```bash
+aiassisted skills update
+aiassisted skills update --tool=claude
+aiassisted skills update --dry-run
+aiassisted skills update --force
+```
+
+**What it does:**
+1. Auto-detects AI tool or uses `--tool`
+2. Compares source and target skill files using SHA256 checksums
+3. Identifies new, modified, unchanged, and removed skills
+4. Copies only changed files (incremental update)
+
+**Options:**
+- `--tool=TYPE` - Specify tool: `auto` (default), `claude`, `opencode`
+- `--dry-run` - Preview what would be updated without making changes
+- `--force` - Force update all files regardless of checksum
+
+**Output (changes detected):**
+```
+[INFO] Auto-detected tool: claude
+[INFO] Source: .aiassisted/skills
+[INFO] Target: .claude/skills
+[INFO] Analyzing skills...
+[INFO] Summary: 1 new, 2 updated, 3 unchanged, 1 removed
+[INFO]
+[INFO] Skills status:
+[INFO]   + memorybank-setup (new, 1 file)
+[INFO]   ~ git-commit (0 new, 1 modified)
+[INFO]   = doc-code (unchanged)
+[INFO]   = doc-project (unchanged)
+[INFO]   = review-codes (unchanged)
+[INFO]   ~ policy-rust (1 new, 0 modified)
+[INFO]   - old-deprecated-skill (removed from source)
+[INFO]
+[INFO] Files to update:
+[INFO]   + .claude/skills/memorybank-setup/SKILL.md
+[INFO]   ~ .claude/skills/git-commit/SKILL.md
+[INFO]   + .claude/skills/policy-rust/references/clippy-lints.md
+[OK] Updated 3 files across 3 skills
+[INFO] Note: 1 skill(s) removed from source but still installed
+```
+
+**Output (no changes):**
+```
+[INFO] Summary: 0 new, 0 updated, 7 unchanged, 0 removed
+[OK] All skills are up to date!
+```
+
+**Removed skills handling:**
+- Removed skills are reported but NOT automatically deleted
+- User must manually remove if desired
+- This prevents accidental deletion of customized skills
 
 ---
 
@@ -459,6 +523,8 @@ Available for all commands:
 - ✅ Force overwrite option
 - ✅ Dry-run mode
 - ✅ List available skills
+- ✅ Incremental update (SHA256-based diffing)
+- ✅ Unified command structure (`skills setup/list/update`)
 
 ### Configuration
 - ✅ TOML-based configuration
@@ -489,8 +555,9 @@ Available for all commands:
 | install (42 files) | ~3-5s | Network dependent |
 | check | ~1-2s | HTTP request |
 | update | ~2-4s | Only changed files |
-| setup-skills | <100ms | Local copy operation |
+| skills setup | <100ms | Local copy operation |
 | skills list | <50ms | Directory scan |
+| skills update | <100ms | SHA256 comparison + copy |
 
 **Memory usage:** <20MB peak (during install)
 
@@ -580,24 +647,25 @@ End-to-end validation via `scripts/smoke-test.sh`:
 
 ## Summary
 
-**v0.2.0 Feature Completion:**
+**v0.3.0 Feature Completion:**
 
 | Category | Features | Status |
 |----------|----------|--------|
 | Core commands | 4 | ✅ Complete |
 | Content domain | 3 | ✅ Complete |
-| Skills domain | 2 | ✅ Complete |
+| Skills domain | 3 | ✅ Complete |
 | Config domain | 5 | ✅ Complete |
 | Self-update | 1 | ✅ Complete |
 | Migration | 1 | ✅ Complete |
-| **Total** | **16 commands** | **✅ Production Ready** |
+| **Total** | **17 commands** | **✅ Production Ready** |
 
 **Additional features:**
-- 27 core tests (config, content, migration)
+- 138 unit tests
 - 5 platform binaries
 - cargo-dist automated releases
 - Migration from shell version
-- 6 built-in skills
+- 7 built-in skills
+- Unified skills command structure (`skills setup/list/update`)
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "version": "a3a5daa",
+  "version": "60c4062",
   "files": [
     {
       "path": "config.toml.default",
@@ -156,6 +156,10 @@
     {
       "path": "skills/git-commit/references/conventional-commits.md",
       "checksum": "7dce4b5b6715b200a8ced3915105a1c640f59ace44d68deadab00e1672d9b7e7"
+    },
+    {
+      "path": "skills/memorybank-setup/SKILL.md",
+      "checksum": "bac87123c2d80b512c233956bd493f716946b8536020a1413a86f677ede264ac"
     },
     {
       "path": "skills/policy-rust/SKILL.md",

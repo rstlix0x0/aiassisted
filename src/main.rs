@@ -17,7 +17,7 @@ use aiassisted::core::infra::{Checksum, FileSystem, HttpClient, Logger};
 use aiassisted::infra::{ColoredLogger, ReqwestClient, Sha2Checksum, StdFileSystem};
 use aiassisted::migration::MigrateCommand;
 use aiassisted::selfupdate::{GithubReleasesProvider, SelfUpdateCommand};
-use aiassisted::skills::{SetupSkillsCommand, SkillsListCommand};
+use aiassisted::skills::{SetupSkillsCommand, SkillsListCommand, SkillsUpdateCommand};
 
 /// Application context holding all infrastructure dependencies.
 /// Uses static dispatch (generics) for zero-cost abstractions.
@@ -86,6 +86,9 @@ async fn main() {
         }
 
         Commands::SetupSkills(args) => {
+            // Deprecation warning
+            ctx.logger.warn("'setup-skills' is deprecated. Use 'aiassisted skills setup' instead.");
+
             let tool: aiassisted::core::ToolType = args.tool.into();
             let cmd = SetupSkillsCommand {
                 tool,
@@ -103,10 +106,37 @@ async fn main() {
                 std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
             match args.command {
+                SkillsCommands::Setup {
+                    tool,
+                    dry_run,
+                    force,
+                } => {
+                    let tool: aiassisted::core::ToolType = tool.into();
+                    let cmd = SetupSkillsCommand {
+                        tool,
+                        dry_run,
+                        force,
+                    };
+                    cmd.execute(&ctx.fs, &ctx.logger, &project_path).await
+                }
                 SkillsCommands::List { tool } => {
                     let tool: aiassisted::core::ToolType = tool.into();
                     let cmd = SkillsListCommand { tool };
                     cmd.execute(&ctx.fs, &ctx.logger, &project_path).await
+                }
+                SkillsCommands::Update {
+                    tool,
+                    dry_run,
+                    force,
+                } => {
+                    let tool: aiassisted::core::ToolType = tool.into();
+                    let cmd = SkillsUpdateCommand {
+                        tool,
+                        dry_run,
+                        force,
+                    };
+                    cmd.execute(&ctx.fs, &ctx.checksum, &ctx.logger, &project_path)
+                        .await
                 }
             }
         }

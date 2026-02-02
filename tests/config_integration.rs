@@ -34,8 +34,8 @@ async fn test_config_load_default() {
     let config = store.load().await.unwrap();
     assert_eq!(config.default_tool, ToolType::Auto);
     assert_eq!(config.verbosity, 1);
-    assert_eq!(config.auto_update, true);
-    assert_eq!(config.prefer_project, true);
+    assert!(config.auto_update);
+    assert!(config.prefer_project);
 }
 
 #[tokio::test]
@@ -47,10 +47,12 @@ async fn test_config_save_and_load() {
     let store = TomlConfigStore::with_path(fs.clone(), config_path.clone());
 
     // Create custom config
-    let mut config = AppConfig::default();
-    config.default_tool = ToolType::Claude;
-    config.verbosity = 2;
-    config.auto_update = false;
+    let config = AppConfig {
+        default_tool: ToolType::Claude,
+        verbosity: 2,
+        auto_update: false,
+        ..Default::default()
+    };
 
     // Save it
     store.save(&config).await.unwrap();
@@ -62,7 +64,7 @@ async fn test_config_save_and_load() {
     let loaded = store.load().await.unwrap();
     assert_eq!(loaded.default_tool, ToolType::Claude);
     assert_eq!(loaded.verbosity, 2);
-    assert_eq!(loaded.auto_update, false);
+    assert!(!loaded.auto_update);
 }
 
 #[tokio::test]
@@ -87,9 +89,11 @@ async fn test_config_reset() {
     let store = TomlConfigStore::with_path(fs.clone(), config_path.clone());
 
     // Set custom values
-    let mut config = AppConfig::default();
-    config.default_tool = ToolType::OpenCode;
-    config.verbosity = 2; // Valid range is 0-2
+    let config = AppConfig {
+        default_tool: ToolType::OpenCode,
+        verbosity: 2, // Valid range is 0-2
+        ..Default::default()
+    };
     store.save(&config).await.unwrap();
 
     // Reset
@@ -126,9 +130,11 @@ async fn test_show_command() {
     let store = TomlConfigStore::with_path(fs, config_path);
 
     // Set some values
-    let mut config = AppConfig::default();
-    config.default_tool = ToolType::Claude;
-    config.verbosity = 1;
+    let config = AppConfig {
+        default_tool: ToolType::Claude,
+        verbosity: 1,
+        ..Default::default()
+    };
     store.save(&config).await.unwrap();
 
     let cmd = ShowCommand;
@@ -147,8 +153,10 @@ async fn test_get_command_existing_key() {
     let store = TomlConfigStore::with_path(fs, config_path);
 
     // Save config with default_tool set to claude
-    let mut config = AppConfig::default();
-    config.default_tool = ToolType::Claude;
+    let config = AppConfig {
+        default_tool: ToolType::Claude,
+        ..Default::default()
+    };
     store.save(&config).await.unwrap();
 
     let cmd = GetCommand {
@@ -186,8 +194,10 @@ async fn test_reset_command_with_force() {
     let store = TomlConfigStore::with_path(fs.clone(), config_path.clone());
 
     // Set custom values
-    let mut config = AppConfig::default();
-    config.default_tool = ToolType::OpenCode;
+    let config = AppConfig {
+        default_tool: ToolType::OpenCode,
+        ..Default::default()
+    };
     store.save(&config).await.unwrap();
 
     // Reset with force (no prompt)
@@ -210,11 +220,12 @@ async fn test_config_toml_roundtrip() {
     let store = TomlConfigStore::with_path(fs.clone(), config_path.clone());
 
     // Create config with all fields set
-    let mut config = AppConfig::default();
-    config.default_tool = ToolType::Claude;
-    config.verbosity = 2;
-    config.auto_update = false;
-    config.prefer_project = false;
+    let config = AppConfig {
+        default_tool: ToolType::Claude,
+        verbosity: 2,
+        auto_update: false,
+        prefer_project: false,
+    };
 
     // Save
     store.save(&config).await.unwrap();
@@ -243,8 +254,10 @@ async fn test_config_persistence() {
     // First store instance - save config with claude tool
     {
         let store1 = TomlConfigStore::with_path(fs.clone(), config_path.clone());
-        let mut config = AppConfig::default();
-        config.default_tool = ToolType::Claude;
+        let config = AppConfig {
+            default_tool: ToolType::Claude,
+            ..Default::default()
+        };
         store1.save(&config).await.unwrap();
     }
 
