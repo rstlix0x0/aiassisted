@@ -100,7 +100,7 @@ Use this skill when:
 ### Breaking Changes
 
 Indicate breaking changes by:
-1. Appending `!` after type/scope: `feat(api)!: remove endpoint`
+1. Appending "!" after type/scope: `feat(api)!: remove endpoint`
 2. Footer: `BREAKING CHANGE: The endpoint has been removed`
 
 ## Examples

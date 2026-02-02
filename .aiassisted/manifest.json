@@ -1,5 +1,5 @@
 {
-  "version": "7bb3204",
+  "version": "a2ed234",
   "files": [
     {
       "path": "agents/code-explorer/AGENT.md",
@@ -163,7 +163,7 @@
     },
     {
       "path": "skills/git-commit/SKILL.md",
-      "checksum": "dc59a8a3129cb8a22e1a1a47a047ab7a176f75f6573bfdc0dc2eb224bf97faf2"
+      "checksum": "c60f25aae3cafe47b422ef66d04d7624e2690a21b000b170f90acc1f3cbd287d"
     },
     {
       "path": "skills/git-commit/references/conventional-commits.md",
