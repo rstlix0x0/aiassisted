@@ -63,6 +63,11 @@ aiassisted skills list    # Shows installed skills
 # Update skills when source changes
 aiassisted skills update  # Syncs only changed files
 
+# Setup AI agents (compile to platform-specific format)
+aiassisted agents                              # List available agents
+aiassisted agents setup --platform claude-code # Compile for Claude Code
+aiassisted agents setup --platform opencode    # Compile for OpenCode
+
 # Check for updates
 aiassisted check
 
@@ -125,6 +130,16 @@ Pre-built AI skills (slash commands):
 - `doc-project/` - Project documentation
 - `policy-rust/` - Rust coding policies
 - `memorybank-setup/` - Memory bank initialization
+
+### 🤖 Agents (`agents/`)
+
+Platform-agnostic agent definitions that compile to tool-specific formats:
+- `code-explorer/` - Fast codebase exploration (read-only, fast model)
+- `code-reviewer/` - Code quality and security review (read-only, balanced model)
+
+Agents are defined with YAML frontmatter and compiled to:
+- **Claude Code**: TOML config with `disallowedTools` and `model` fields
+- **OpenCode**: JSON config with `tools` restrictions and full model IDs
 
 ## How to Use `.aiassisted/` with AI
 
@@ -285,6 +300,27 @@ aiassisted skills update [--tool=auto|claude|opencode] [--dry-run] [--force]
 
 **Note:** `setup-skills` is deprecated. Use `skills setup` instead.
 
+### AI Agents
+
+```bash
+# List available agents
+aiassisted agents
+
+# Compile and install agents for a platform
+aiassisted agents setup --platform claude-code [--dry-run] [--force]
+aiassisted agents setup --platform opencode [--dry-run] [--force]
+
+# Update installed agents (sync changes)
+aiassisted agents update --platform claude-code [--dry-run] [--force]
+aiassisted agents update --platform opencode [--dry-run] [--force]
+```
+
+**Agent compilation:**
+- Agents are defined in `.aiassisted/agents/{name}/AGENT.md` with YAML frontmatter
+- `capabilities: read-only` → restricts write/edit tools
+- `model-tier: fast|balanced|capable` → maps to platform-specific models
+- `skills: [...]` → attaches skills (Claude Code only)
+
 ### Configuration
 
 ```bash
@@ -415,6 +451,7 @@ Built as a domain-based modular monolith in Rust:
 
 ```
 src/
+├── agents/        # Agent compilation (setup, update, list)
 ├── content/       # Install, update, check
 ├── skills/        # Skills management (setup, list, update)
 ├── config/        # Configuration
@@ -425,7 +462,7 @@ src/
 - Dependency inversion (traits)
 - Static dispatch (generics)
 - Zero warnings policy
-- Comprehensive testing (165 tests)
+- Comprehensive testing (176 unit tests + 27 integration tests)
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
@@ -434,7 +471,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 ✅ **Complete Feature Set:**
 - Content management (install, update, check)
 - Skills system with unified commands (setup, list, update)
-- Incremental skill updates with SHA256 diffing
+- Agents system with platform-specific compilation
+- Incremental skill/agent updates with SHA256 diffing
 - Configuration management
 - Self-update capability
 - Cross-platform binaries (Linux, macOS, Windows)
@@ -450,6 +488,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 - `doc-project` - Project documentation
 - `policy-rust` - Rust coding policies
 - `memorybank-setup` - Initialize memory bank structure
+
+**Available Agents:**
+- `code-explorer` - Fast codebase exploration (read-only, fast model)
+- `code-reviewer` - Code quality and security review (read-only, balanced model)
 
 See [FEATURES.md](FEATURES.md) for comprehensive feature list.
 

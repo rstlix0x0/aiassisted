@@ -6,7 +6,8 @@ use clap::Parser;
 mod cli;
 
 // Import from library crate using package name
-use cli::{Cli, Commands, ConfigCommands, SkillsCommands};
+use cli::{Cli, Commands, ConfigCommands, SkillsCommands, AgentsCommands};
+use aiassisted::agents::{AgentsListCommand, AgentsSetupCommand, AgentsUpdateCommand};
 use aiassisted::config::{
     EditCommand as ConfigEditCommand, GetCommand as ConfigGetCommand,
     PathCommand as ConfigPathCommand, ResetCommand as ConfigResetCommand,
@@ -132,6 +133,46 @@ async fn main() {
                     let tool: aiassisted::core::ToolType = tool.into();
                     let cmd = SkillsUpdateCommand {
                         tool,
+                        dry_run,
+                        force,
+                    };
+                    cmd.execute(&ctx.fs, &ctx.checksum, &ctx.logger, &project_path)
+                        .await
+                }
+            }
+        }
+
+        Commands::Agents(args) => {
+            let project_path =
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+            match args.command {
+                None => {
+                    // Default: list agents
+                    let cmd = AgentsListCommand;
+                    cmd.execute(&ctx.fs, &ctx.logger, &project_path).await
+                }
+                Some(AgentsCommands::Setup {
+                    platform,
+                    dry_run,
+                    force,
+                }) => {
+                    let platform: aiassisted::agents::Platform = platform.into();
+                    let cmd = AgentsSetupCommand {
+                        platform,
+                        dry_run,
+                        force,
+                    };
+                    cmd.execute(&ctx.fs, &ctx.logger, &project_path).await
+                }
+                Some(AgentsCommands::Update {
+                    platform,
+                    dry_run,
+                    force,
+                }) => {
+                    let platform: aiassisted::agents::Platform = platform.into();
+                    let cmd = AgentsUpdateCommand {
+                        platform,
                         dry_run,
                         force,
                     };

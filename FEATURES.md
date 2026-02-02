@@ -1,14 +1,14 @@
 # Features
 
-Complete feature reference for `aiassisted` v0.4.0
+Complete feature reference for `aiassisted` v0.5.0
 
 ## Overview
 
 `aiassisted` is a Rust CLI tool that embeds AI engineering guidelines into your projects. All features are tested and production-ready.
 
 **Quick Stats:**
-- **17 Commands** - Full CLI interface
-- **138 Tests** - Comprehensive test coverage
+- **20 Commands** - Full CLI interface
+- **176 Unit Tests + 27 Integration Tests** - Comprehensive test coverage
 - **5 Platforms** - Linux, macOS, Windows (x64 + ARM64)
 - **Zero Warnings** - Strict code quality standards
 - **<50ms Startup** - Native Rust performance
@@ -320,6 +320,141 @@ aiassisted skills update --force
 
 ---
 
+## Agents Domain
+
+Compile and manage platform-agnostic AI agents.
+
+### agents
+**List available agents**
+
+```bash
+aiassisted agents
+```
+
+**What it does:**
+1. Scans `.aiassisted/agents/` for directories containing `AGENT.md`
+2. Parses YAML frontmatter to extract agent descriptions
+3. Lists all available agents with their descriptions
+
+**Output:**
+```
+[INFO] Agents source: .aiassisted/agents
+[INFO]
+[INFO] Available agents (2):
+[INFO]
+[INFO]   code-explorer - Fast codebase exploration for finding files, searching code, and understanding project structure.
+[INFO]   code-reviewer - Reviews code for quality, security, and best practices.
+```
+
+---
+
+### agents setup
+**Compile and install agents for a platform**
+
+```bash
+aiassisted agents setup --platform claude-code
+aiassisted agents setup --platform opencode
+aiassisted agents setup --platform claude-code --dry-run
+aiassisted agents setup --platform claude-code --force
+```
+
+**What it does:**
+1. Discovers agents in `.aiassisted/agents/`
+2. Parses each `AGENT.md` file (YAML frontmatter + markdown body)
+3. Validates agent specification (name, description, skill references)
+4. Compiles to platform-specific format
+5. Writes compiled files to target directory:
+   - Claude Code: `.claude/agents/{name}/agent.toml` + `prompt.md`
+   - OpenCode: `.opencode/agents/{name}/agent.json` + `prompt.md`
+
+**Options:**
+- `--platform=TYPE` - Target platform: `claude-code` or `opencode` (required)
+- `--dry-run` - Preview what would be compiled
+- `--force` - Overwrite existing agents
+
+**Output:**
+```
+[INFO] Setting up agents for claude-code
+[INFO] Source: .aiassisted/agents
+[INFO] Target: .claude/agents
+[INFO] Found 2 agent(s)
+[OK] Compiled: code-explorer
+[OK] Compiled: code-reviewer
+[INFO]
+[OK] Setup complete: 2 compiled, 0 skipped, 0 errors
+```
+
+**AGENT.md format:**
+```markdown
+---
+name: code-explorer
+description: Fast codebase exploration
+capabilities: read-only
+model-tier: fast
+skills:
+  - review-codes
+---
+
+You are a codebase exploration specialist...
+```
+
+**Compilation mapping:**
+
+| Field | Claude Code | OpenCode |
+|-------|-------------|----------|
+| `capabilities: read-only` | `disallowedTools = ["Write", "Edit"]` | `"tools": {"write": false, "edit": false}` |
+| `model-tier: fast` | `model = "haiku"` | `"model": "anthropic/claude-3-5-haiku-20241022"` |
+| `model-tier: balanced` | (default, omitted) | `"model": "anthropic/claude-sonnet-4-20250514"` |
+| `model-tier: capable` | `model = "opus"` | `"model": "anthropic/claude-opus-4-20250514"` |
+| `skills: [...]` | `skills = [...]` | (ignored) |
+
+---
+
+### agents update
+**Update installed agents (sync changes from source)**
+
+```bash
+aiassisted agents update --platform claude-code
+aiassisted agents update --platform opencode
+aiassisted agents update --platform claude-code --dry-run
+aiassisted agents update --platform claude-code --force
+```
+
+**What it does:**
+1. Compares source agents with installed compiled agents using SHA256 checksums
+2. Identifies new, modified, unchanged, and removed agents
+3. Recompiles only changed agents (incremental update)
+
+**Options:**
+- `--platform=TYPE` - Target platform: `claude-code` or `opencode` (required)
+- `--dry-run` - Preview what would be updated without making changes
+- `--force` - Force update all agents regardless of checksum
+
+**Output (changes detected):**
+```
+[INFO] Updating agents for claude-code
+[INFO] Source: .aiassisted/agents
+[INFO] Target: .claude/agents
+[INFO] Analyzing agents...
+[INFO] Summary: 0 new, 1 modified, 1 unchanged, 0 removed
+[INFO]
+[INFO] Agents status:
+[INFO]   ~ code-explorer (modified: config + prompt)
+[INFO]   = code-reviewer (unchanged)
+[INFO]
+[INFO] Agents to update:
+[INFO]   ~ code-explorer
+[OK] Updated 1 agent(s)
+```
+
+**Output (no changes):**
+```
+[INFO] Summary: 0 new, 0 modified, 2 unchanged, 0 removed
+[OK] All agents are up to date!
+```
+
+---
+
 ## Config Domain
 
 Manage user configuration.
@@ -526,6 +661,18 @@ Available for all commands:
 - ✅ Incremental update (SHA256-based diffing)
 - ✅ Unified command structure (`skills setup/list/update`)
 
+### Agents System
+- ✅ Platform-agnostic agent definitions (YAML frontmatter)
+- ✅ Compile to Claude Code format (TOML)
+- ✅ Compile to OpenCode format (JSON)
+- ✅ Capability mapping (read-only → tool restrictions)
+- ✅ Model tier mapping (fast/balanced/capable)
+- ✅ Skill attachment (Claude Code only)
+- ✅ Agent validation (name, description, skill references)
+- ✅ Incremental update (SHA256-based diffing)
+- ✅ Force overwrite option
+- ✅ Dry-run mode
+
 ### Configuration
 - ✅ TOML-based configuration
 - ✅ Show/get/edit/reset commands
@@ -558,6 +705,9 @@ Available for all commands:
 | skills setup | <100ms | Local copy operation |
 | skills list | <50ms | Directory scan |
 | skills update | <100ms | SHA256 comparison + copy |
+| agents | <50ms | Directory scan + parse |
+| agents setup | <100ms | YAML parse + compile |
+| agents update | <100ms | SHA256 comparison + compile |
 
 **Memory usage:** <20MB peak (during install)
 
@@ -592,21 +742,22 @@ Comprehensive test coverage across all domains:
 
 | Type | Count | Coverage |
 |------|-------|----------|
-| Unit tests | 215 | Core logic, error handling |
-| Integration tests | 42 | Multi-module workflows |
-| **Total** | **257** | **Complete coverage** |
+| Unit tests | 176 | Core logic, error handling |
+| Integration tests | 27 | Multi-module workflows |
+| **Total** | **203** | **Complete coverage** |
 
 ### Test Breakdown by Domain
 
 | Domain | Unit | Integration | Total |
 |--------|------|-------------|-------|
+| agents | 38 | 0 | 38 |
 | config | 15 | 14 | 29 |
 | content | 40 | 8 | 48 |
 | core/infra | 20 | 0 | 20 |
 | migration | 21 | 5 | 26 |
 | selfupdate | 30 | 0 | 30 |
-| templates | 89 | 15 | 104 |
-| **Total** | **215** | **42** | **257** |
+| skills | 12 | 0 | 12 |
+| **Total** | **176** | **27** | **203** |
 
 ### Smoke Tests
 
@@ -647,25 +798,28 @@ End-to-end validation via `scripts/smoke-test.sh`:
 
 ## Summary
 
-**v0.4.0 Feature Completion:**
+**v0.5.0 Feature Completion:**
 
 | Category | Features | Status |
 |----------|----------|--------|
 | Core commands | 4 | ✅ Complete |
 | Content domain | 3 | ✅ Complete |
 | Skills domain | 3 | ✅ Complete |
+| Agents domain | 3 | ✅ Complete |
 | Config domain | 5 | ✅ Complete |
 | Self-update | 1 | ✅ Complete |
 | Migration | 1 | ✅ Complete |
-| **Total** | **17 commands** | **✅ Production Ready** |
+| **Total** | **20 commands** | **✅ Production Ready** |
 
 **Additional features:**
-- 138 unit tests
+- 176 unit tests + 27 integration tests
 - 5 platform binaries
 - cargo-dist automated releases
 - Migration from shell version
 - 7 built-in skills
+- 2 built-in agents
 - Unified skills command structure (`skills setup/list/update`)
+- Unified agents command structure (`agents setup/update`)
 
 ---
 

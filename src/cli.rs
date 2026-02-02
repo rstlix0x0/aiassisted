@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 
+use aiassisted::agents::Platform;
 use aiassisted::core::ToolType;
 
 /// CLI tool for embedding AI assistant guidelines and templates into projects.
@@ -37,6 +38,9 @@ pub enum Commands {
 
     /// Manage skills
     Skills(SkillsArgs),
+
+    /// Manage agents
+    Agents(AgentsArgs),
 
     /// Manage configuration
     Config(ConfigArgs),
@@ -141,6 +145,65 @@ pub enum SkillsCommands {
         #[arg(long)]
         force: bool,
     },
+}
+
+/// Arguments for the agents command.
+#[derive(Parser, Debug)]
+pub struct AgentsArgs {
+    #[command(subcommand)]
+    pub command: Option<AgentsCommands>,
+}
+
+/// Agents subcommands.
+#[derive(Subcommand, Debug)]
+pub enum AgentsCommands {
+    /// Compile and install agents for a platform
+    Setup {
+        /// Target platform for agent compilation
+        #[arg(short, long, value_enum)]
+        platform: CliPlatform,
+
+        /// Show what would be created without creating
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Overwrite existing agents
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Update installed agents (sync changes from source)
+    Update {
+        /// Target platform for agent compilation
+        #[arg(short, long, value_enum)]
+        platform: CliPlatform,
+
+        /// Show what would be updated without updating
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Force update all agents (ignore checksums)
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+/// CLI platform type for agents (no auto-detect).
+#[derive(ValueEnum, Clone, Debug)]
+pub enum CliPlatform {
+    #[value(name = "claude-code")]
+    ClaudeCode,
+    #[value(name = "opencode")]
+    OpenCode,
+}
+
+impl From<CliPlatform> for Platform {
+    fn from(cli: CliPlatform) -> Self {
+        match cli {
+            CliPlatform::ClaudeCode => Platform::ClaudeCode,
+            CliPlatform::OpenCode => Platform::OpenCode,
+        }
+    }
 }
 
 /// Arguments for the config command.

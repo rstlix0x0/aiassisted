@@ -4,6 +4,7 @@
 //! that contain curated guidelines, instructions, prompts, and skills for AI assistants.
 
 // Public modules for external use and testing
+pub mod agents;
 pub mod config;
 pub mod content;
 pub mod core;
