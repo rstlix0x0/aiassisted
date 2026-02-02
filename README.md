@@ -136,6 +136,9 @@ Pre-built AI skills (slash commands):
 Platform-agnostic agent definitions that compile to tool-specific formats:
 - `code-explorer/` - Fast codebase exploration (read-only, fast model)
 - `code-reviewer/` - Code quality and security review (read-only, balanced model)
+- `memorybank-planner/` - Creates task plans for memory bank sub-projects (read-write, capable model)
+- `memorybank-implementer/` - Executes planned tasks with progress tracking (read-write, capable model)
+- `memorybank-verifier/` - Validates planner and implementer work results (read-only, capable model)
 
 Agents are defined with YAML frontmatter and compiled to:
 - **Claude Code**: TOML config with `disallowedTools` and `model` fields
@@ -492,6 +495,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 **Available Agents:**
 - `code-explorer` - Fast codebase exploration (read-only, fast model)
 - `code-reviewer` - Code quality and security review (read-only, balanced model)
+- `memorybank-planner` - Creates task plans for memory bank workflows (read-write, capable model)
+- `memorybank-implementer` - Executes planned tasks with progress tracking (read-write, capable model)
+- `memorybank-verifier` - Validates planner and implementer work (read-only, capable model)
 
 See [FEATURES.md](FEATURES.md) for comprehensive feature list.
 
