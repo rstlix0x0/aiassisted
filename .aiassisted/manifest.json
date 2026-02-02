@@ -1,6 +1,14 @@
 {
-  "version": "0ec5eda",
+  "version": "7bb3204",
   "files": [
+    {
+      "path": "agents/code-explorer/AGENT.md",
+      "checksum": "70b2967a04f538b62ca3e9312ad4a8d3b348e12f8d1e22c38a480b63f7a06935"
+    },
+    {
+      "path": "agents/code-reviewer/AGENT.md",
+      "checksum": "6f077f9f8c6b8922016acc5cd1de7c01cfe871f8bdcf62843ca87579cff01247"
+    },
     {
       "path": "config.toml.default",
       "checksum": "059e350ca323c7a4414e60ee819ef1182681d411672c463f236fb7ba295dd45d"
@@ -8,6 +16,10 @@
     {
       "path": "config/README.md",
       "checksum": "fcd186b5d115090ea343f86eca6218122648a959dcea1e8851eea6e4799c6a67"
+    },
+    {
+      "path": "guidelines/ai/agents/agent-spec.guideline.md",
+      "checksum": "e0a01a628fe6a2adaf0b6c80733f88136350aca3b18af0982dcafe1c6adf26a5"
     },
     {
       "path": "guidelines/ai/agents/claude-code/README.md",
