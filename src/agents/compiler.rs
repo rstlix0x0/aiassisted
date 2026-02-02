@@ -1,7 +1,6 @@
 //! Agent compilation to platform-specific formats
 
 use crate::agents::parser::{Capabilities, ModelTier, ParsedAgent};
-use serde::Serialize;
 
 /// Target platform for agent compilation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,51 +20,17 @@ impl std::fmt::Display for Platform {
     }
 }
 
-/// Compiled agent output
+/// Compiled agent output - a single markdown file with YAML frontmatter
 #[derive(Debug, Clone)]
 pub struct CompiledAgent {
     /// Agent name
     pub name: String,
-    /// Compiled TOML/JSON content
-    pub config_content: String,
-    /// System prompt markdown content
-    pub prompt_content: String,
-    /// Config file name (e.g., "agent.toml" or "agent.json")
-    pub config_filename: String,
-    /// Prompt file name
-    pub prompt_filename: String,
+    /// Full content (YAML frontmatter + system prompt)
+    pub content: String,
+    /// Output filename (e.g., "code-reviewer.md")
+    pub filename: String,
 }
 
-/// Claude Code agent configuration structure
-#[derive(Debug, Clone, Serialize)]
-struct ClaudeCodeConfig {
-    name: String,
-    description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    model: Option<String>,
-    #[serde(rename = "disallowedTools", skip_serializing_if = "Vec::is_empty")]
-    disallowed_tools: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    skills: Vec<String>,
-}
-
-/// OpenCode agent configuration structure
-#[derive(Debug, Clone, Serialize)]
-struct OpenCodeConfig {
-    name: String,
-    description: String,
-    model: String,
-    mode: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tools: Option<OpenCodeTools>,
-}
-
-/// OpenCode tools configuration
-#[derive(Debug, Clone, Serialize)]
-struct OpenCodeTools {
-    write: bool,
-    edit: bool,
-}
 
 /// Compile an agent to a platform-specific format
 pub fn compile_agent(agent: &ParsedAgent, platform: Platform) -> CompiledAgent {
@@ -75,70 +40,109 @@ pub fn compile_agent(agent: &ParsedAgent, platform: Platform) -> CompiledAgent {
     }
 }
 
+/// Compile agent for Claude Code format
+/// Output: Single markdown file with YAML frontmatter
+/// Format per agent-spec.guideline.md:
+/// ```markdown
+/// ---
+/// name: code-reviewer
+/// description: Reviews code for quality and best practices.
+/// disallowedTools: Write, Edit
+/// model: sonnet
+/// skills:
+///   - review-codes
+/// ---
+///
+/// [System prompt body]
+/// ```
 fn compile_for_claude_code(agent: &ParsedAgent) -> CompiledAgent {
+    let mut frontmatter_lines = Vec::new();
+
+    // Required fields
+    frontmatter_lines.push(format!("name: {}", agent.spec.name));
+    frontmatter_lines.push(format!("description: {}", agent.spec.description));
+
+    // Tool restrictions (before model per guideline example)
+    match agent.spec.capabilities {
+        Capabilities::ReadOnly => {
+            frontmatter_lines.push("disallowedTools: Write, Edit".to_string());
+        }
+        Capabilities::ReadWrite => {} // Default, omit
+    }
+
+    // Model mapping per agent-spec.guideline.md
     let model = match agent.spec.model_tier {
-        ModelTier::Fast => Some("haiku".to_string()),
-        ModelTier::Balanced => None, // Default, don't include
-        ModelTier::Capable => Some("opus".to_string()),
+        ModelTier::Fast => "haiku",
+        ModelTier::Balanced => "sonnet",
+        ModelTier::Capable => "opus",
     };
+    frontmatter_lines.push(format!("model: {}", model));
 
-    let disallowed_tools = match agent.spec.capabilities {
-        Capabilities::ReadOnly => vec!["Write".to_string(), "Edit".to_string()],
-        Capabilities::ReadWrite => vec![],
-    };
+    // Skills (if any)
+    if !agent.spec.skills.is_empty() {
+        frontmatter_lines.push("skills:".to_string());
+        for skill in &agent.spec.skills {
+            frontmatter_lines.push(format!("  - {}", skill));
+        }
+    }
 
-    let config = ClaudeCodeConfig {
-        name: agent.spec.name.clone(),
-        description: agent.spec.description.clone(),
-        model,
-        disallowed_tools,
-        skills: agent.spec.skills.clone(),
-    };
-
-    let config_content =
-        toml::to_string_pretty(&config).unwrap_or_else(|_| "# Error generating config".to_string());
+    let frontmatter = frontmatter_lines.join("\n");
+    let content = format!("---\n{}\n---\n\n{}", frontmatter, agent.system_prompt);
 
     CompiledAgent {
         name: agent.spec.name.clone(),
-        config_content,
-        prompt_content: agent.system_prompt.clone(),
-        config_filename: "agent.toml".to_string(),
-        prompt_filename: "prompt.md".to_string(),
+        content,
+        filename: format!("{}.md", agent.spec.name),
     }
 }
 
+/// Compile agent for OpenCode format
+/// Output: Single markdown file with YAML frontmatter
+/// Format per agent-spec.guideline.md:
+/// ```markdown
+/// ---
+/// description: Reviews code for quality and best practices.
+/// mode: subagent
+/// model: anthropic/claude-sonnet-4-20250514
+/// tools:
+///   write: false
+///   edit: false
+/// ---
+///
+/// [System prompt body]
+/// ```
 fn compile_for_opencode(agent: &ParsedAgent) -> CompiledAgent {
+    let mut frontmatter_lines = Vec::new();
+
+    // Required fields
+    frontmatter_lines.push(format!("description: {}", agent.spec.description));
+    frontmatter_lines.push("mode: subagent".to_string());
+
+    // Model (full provider/model-id format per agent-spec.guideline.md)
     let model = match agent.spec.model_tier {
-        ModelTier::Fast => "anthropic/claude-3-5-haiku-20241022".to_string(),
-        ModelTier::Balanced => "anthropic/claude-sonnet-4-20250514".to_string(),
-        ModelTier::Capable => "anthropic/claude-opus-4-20250514".to_string(),
+        ModelTier::Fast => "anthropic/claude-haiku-4-20250514",
+        ModelTier::Balanced => "anthropic/claude-sonnet-4-20250514",
+        ModelTier::Capable => "anthropic/claude-opus-4-20250514",
     };
+    frontmatter_lines.push(format!("model: {}", model));
 
-    let tools = match agent.spec.capabilities {
-        Capabilities::ReadOnly => Some(OpenCodeTools {
-            write: false,
-            edit: false,
-        }),
-        Capabilities::ReadWrite => None, // Default, don't include
-    };
+    // Tool restrictions (nested YAML for read-only)
+    match agent.spec.capabilities {
+        Capabilities::ReadOnly => {
+            frontmatter_lines.push("tools:".to_string());
+            frontmatter_lines.push("  write: false".to_string());
+            frontmatter_lines.push("  edit: false".to_string());
+        }
+        Capabilities::ReadWrite => {} // Default, omit
+    }
 
-    let config = OpenCodeConfig {
-        name: agent.spec.name.clone(),
-        description: agent.spec.description.clone(),
-        model,
-        mode: "subagent".to_string(),
-        tools,
-    };
-
-    let config_content =
-        serde_json::to_string_pretty(&config).unwrap_or_else(|_| "{}".to_string());
+    let frontmatter = frontmatter_lines.join("\n");
+    let content = format!("---\n{}\n---\n\n{}", frontmatter, agent.system_prompt);
 
     CompiledAgent {
         name: agent.spec.name.clone(),
-        config_content,
-        prompt_content: agent.system_prompt.clone(),
-        config_filename: "agent.json".to_string(),
-        prompt_filename: "prompt.md".to_string(),
+        content,
+        filename: format!("{}.md", agent.spec.name),
     }
 }
 
@@ -168,11 +172,10 @@ mod tests {
         let compiled = compile_agent(&agent, Platform::ClaudeCode);
 
         assert_eq!(compiled.name, "test-agent");
-        assert_eq!(compiled.config_filename, "agent.toml");
-        assert!(compiled.config_content.contains("model = \"haiku\""));
-        assert!(compiled.config_content.contains("disallowedTools"));
-        assert!(compiled.config_content.contains("Write"));
-        assert!(compiled.config_content.contains("Edit"));
+        assert_eq!(compiled.filename, "test-agent.md");
+        assert!(compiled.content.contains("model: haiku"));
+        assert!(compiled.content.contains("disallowedTools: Write, Edit"));
+        assert!(compiled.content.contains("You are a test agent."));
     }
 
     #[test]
@@ -180,10 +183,10 @@ mod tests {
         let agent = make_test_agent(Capabilities::ReadWrite, ModelTier::Balanced, vec![]);
         let compiled = compile_agent(&agent, Platform::ClaudeCode);
 
-        // Balanced model should not include model field (it's the default)
-        assert!(!compiled.config_content.contains("model ="));
+        // Balanced model should output "model: sonnet"
+        assert!(compiled.content.contains("model: sonnet"));
         // ReadWrite should not include disallowedTools
-        assert!(!compiled.config_content.contains("disallowedTools"));
+        assert!(!compiled.content.contains("disallowedTools"));
     }
 
     #[test]
@@ -191,7 +194,7 @@ mod tests {
         let agent = make_test_agent(Capabilities::ReadWrite, ModelTier::Capable, vec![]);
         let compiled = compile_agent(&agent, Platform::ClaudeCode);
 
-        assert!(compiled.config_content.contains("model = \"opus\""));
+        assert!(compiled.content.contains("model: opus"));
     }
 
     #[test]
@@ -203,9 +206,9 @@ mod tests {
         );
         let compiled = compile_agent(&agent, Platform::ClaudeCode);
 
-        assert!(compiled.config_content.contains("skills"));
-        assert!(compiled.config_content.contains("review-codes"));
-        assert!(compiled.config_content.contains("doc-code"));
+        assert!(compiled.content.contains("skills:"));
+        assert!(compiled.content.contains("  - review-codes"));
+        assert!(compiled.content.contains("  - doc-code"));
     }
 
     #[test]
@@ -214,11 +217,12 @@ mod tests {
         let compiled = compile_agent(&agent, Platform::OpenCode);
 
         assert_eq!(compiled.name, "test-agent");
-        assert_eq!(compiled.config_filename, "agent.json");
-        assert!(compiled.config_content.contains("claude-3-5-haiku"));
-        assert!(compiled.config_content.contains("\"mode\": \"subagent\""));
-        assert!(compiled.config_content.contains("\"write\": false"));
-        assert!(compiled.config_content.contains("\"edit\": false"));
+        assert_eq!(compiled.filename, "test-agent.md");
+        assert!(compiled.content.contains("anthropic/claude-haiku-4"));
+        assert!(compiled.content.contains("mode: subagent"));
+        assert!(compiled.content.contains("tools:"));
+        assert!(compiled.content.contains("  write: false"));
+        assert!(compiled.content.contains("  edit: false"));
     }
 
     #[test]
@@ -226,9 +230,9 @@ mod tests {
         let agent = make_test_agent(Capabilities::ReadWrite, ModelTier::Balanced, vec![]);
         let compiled = compile_agent(&agent, Platform::OpenCode);
 
-        assert!(compiled.config_content.contains("claude-sonnet-4"));
+        assert!(compiled.content.contains("anthropic/claude-sonnet-4"));
         // ReadWrite should not include tools section
-        assert!(!compiled.config_content.contains("\"tools\""));
+        assert!(!compiled.content.contains("tools:"));
     }
 
     #[test]
@@ -236,7 +240,7 @@ mod tests {
         let agent = make_test_agent(Capabilities::ReadWrite, ModelTier::Capable, vec![]);
         let compiled = compile_agent(&agent, Platform::OpenCode);
 
-        assert!(compiled.config_content.contains("claude-opus-4"));
+        assert!(compiled.content.contains("anthropic/claude-opus-4"));
     }
 
     #[test]
@@ -250,8 +254,8 @@ mod tests {
         let compiled = compile_agent(&agent, Platform::OpenCode);
 
         // Skills should not appear in OpenCode output
-        assert!(!compiled.config_content.contains("skills"));
-        assert!(!compiled.config_content.contains("some-skill"));
+        assert!(!compiled.content.contains("skills"));
+        assert!(!compiled.content.contains("some-skill"));
     }
 
     #[test]
@@ -271,13 +275,37 @@ mod tests {
         let claude_compiled = compile_agent(&agent, Platform::ClaudeCode);
         let opencode_compiled = compile_agent(&agent, Platform::OpenCode);
 
-        assert_eq!(claude_compiled.prompt_content, agent.system_prompt);
-        assert_eq!(opencode_compiled.prompt_content, agent.system_prompt);
+        assert!(claude_compiled.content.contains("Custom system prompt\n\nWith multiple lines."));
+        assert!(opencode_compiled.content.contains("Custom system prompt\n\nWith multiple lines."));
     }
 
     #[test]
     fn test_platform_display() {
         assert_eq!(Platform::ClaudeCode.to_string(), "claude-code");
         assert_eq!(Platform::OpenCode.to_string(), "opencode");
+    }
+
+    #[test]
+    fn test_claude_code_yaml_frontmatter_format() {
+        let agent = make_test_agent(Capabilities::ReadOnly, ModelTier::Fast, vec!["skill1".to_string()]);
+        let compiled = compile_agent(&agent, Platform::ClaudeCode);
+
+        // Check YAML frontmatter structure
+        assert!(compiled.content.starts_with("---\n"));
+        assert!(compiled.content.contains("\n---\n\n"));
+        assert!(compiled.content.contains("name: test-agent"));
+        assert!(compiled.content.contains("description: A test agent"));
+    }
+
+    #[test]
+    fn test_opencode_yaml_frontmatter_format() {
+        let agent = make_test_agent(Capabilities::ReadOnly, ModelTier::Fast, vec![]);
+        let compiled = compile_agent(&agent, Platform::OpenCode);
+
+        // Check YAML frontmatter structure
+        assert!(compiled.content.starts_with("---\n"));
+        assert!(compiled.content.contains("\n---\n\n"));
+        assert!(compiled.content.contains("description: A test agent"));
+        assert!(compiled.content.contains("mode: subagent"));
     }
 }

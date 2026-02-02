@@ -27,14 +27,10 @@ pub struct AgentDiff {
     pub name: String,
     /// Overall agent status
     pub status: AgentStatus,
-    /// Source path (if exists)
+    /// Source path (if exists) - directory containing AGENT.md
     pub source_path: Option<PathBuf>,
-    /// Target path
+    /// Target path - the compiled .md file
     pub target_path: PathBuf,
-    /// Config file changed
-    pub config_changed: bool,
-    /// Prompt file changed
-    pub prompt_changed: bool,
 }
 
 /// Complete diff between source and target agents
@@ -99,7 +95,7 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
     ) -> Result<AgentsUpdateDiff> {
         let mut agent_diffs = Vec::new();
 
-        // Get source agents
+        // Get source agents (directories containing AGENT.md)
         let source_agents = self.discover_agent_dirs(source_dir).await?;
         let source_names: HashMap<String, PathBuf> = source_agents
             .into_iter()
@@ -109,13 +105,17 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
             })
             .collect();
 
-        // Get target agents
+        // Get target agents (compiled .md files)
         let target_names: HashMap<String, PathBuf> = if self.fs.exists(target_dir) {
-            let target_agents = self.discover_installed_dirs(target_dir).await.unwrap_or_default();
+            let target_agents = self.discover_installed_files(target_dir).await.unwrap_or_default();
             target_agents
                 .into_iter()
                 .filter_map(|p| {
-                    let name = p.file_name().and_then(|n| n.to_str()).map(|n| n.to_string());
+                    // Extract name from filename (e.g., "code-reviewer.md" -> "code-reviewer")
+                    let name = p
+                        .file_stem()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.to_string());
                     name.map(|n| (n, p))
                 })
                 .collect()
@@ -125,15 +125,16 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
 
         // Process source agents
         for (name, source_path) in &source_names {
-            let target_path = target_dir.join(name);
+            // Target is a .md file, not a directory
+            let target_path = target_dir.join(format!("{}.md", name));
 
             if let Some(existing_target) = target_names.get(name) {
                 // Agent exists in both - compare content
-                let (config_changed, prompt_changed) = self
+                let changed = self
                     .compare_agent_content(source_path, existing_target, platform)
                     .await?;
 
-                let status = if config_changed || prompt_changed {
+                let status = if changed {
                     AgentStatus::Modified
                 } else {
                     AgentStatus::Unchanged
@@ -144,8 +145,6 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
                     status,
                     source_path: Some(source_path.clone()),
                     target_path,
-                    config_changed,
-                    prompt_changed,
                 });
             } else {
                 // New agent
@@ -154,22 +153,18 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
                     status: AgentStatus::New,
                     source_path: Some(source_path.clone()),
                     target_path,
-                    config_changed: true,
-                    prompt_changed: true,
                 });
             }
         }
 
         // Process removed agents (exist in target but not source)
-        for name in target_names.keys() {
+        for (name, target_path) in &target_names {
             if !source_names.contains_key(name) {
                 agent_diffs.push(AgentDiff {
                     name: name.clone(),
                     status: AgentStatus::Removed,
                     source_path: None,
-                    target_path: target_dir.join(name),
-                    config_changed: false,
-                    prompt_changed: false,
+                    target_path: target_path.clone(),
                 });
             }
         }
@@ -201,8 +196,8 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
         Ok(agents)
     }
 
-    /// Discover installed agent directories
-    async fn discover_installed_dirs(&self, dir: &Path) -> Result<Vec<PathBuf>> {
+    /// Discover installed agent files (*.md files in target directory)
+    async fn discover_installed_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         if !self.fs.exists(dir) {
             return Ok(Vec::new());
         }
@@ -211,7 +206,10 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
         let entries = self.fs.list_dir(dir).await?;
 
         for entry in entries {
-            if self.fs.is_dir(&entry) {
+            // Look for .md files (not directories)
+            if !self.fs.is_dir(&entry)
+                && entry.extension().is_some_and(|ext| ext == "md")
+            {
                 agents.push(entry);
             }
         }
@@ -220,12 +218,13 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
     }
 
     /// Compare agent content between source and target
+    /// Returns true if content has changed, false if identical
     async fn compare_agent_content(
         &self,
         source_path: &Path,
         target_path: &Path,
         platform: Platform,
-    ) -> Result<(bool, bool)> {
+    ) -> Result<bool> {
         // Read and parse source agent
         let agent_md_path = source_path.join("AGENT.md");
         let content = self.fs.read(&agent_md_path).await?;
@@ -234,27 +233,15 @@ impl<'a, F: FileSystem, C: Checksum> AgentDiffer<'a, F, C> {
         // Compile to get expected content
         let compiled = compile_agent(&parsed, platform);
 
-        // Compare config file
-        let target_config = target_path.join(&compiled.config_filename);
-        let config_changed = if self.fs.exists(&target_config) {
-            let source_hash = self.checksum.sha256(compiled.config_content.as_bytes());
-            let target_hash = self.checksum.sha256_file(&target_config)?;
-            source_hash != target_hash
+        // Compare compiled content with target file
+        if self.fs.exists(target_path) {
+            let source_hash = self.checksum.sha256(compiled.content.as_bytes());
+            let target_hash = self.checksum.sha256_file(target_path)?;
+            Ok(source_hash != target_hash)
         } else {
-            true
-        };
-
-        // Compare prompt file
-        let target_prompt = target_path.join(&compiled.prompt_filename);
-        let prompt_changed = if self.fs.exists(&target_prompt) {
-            let source_hash = self.checksum.sha256(compiled.prompt_content.as_bytes());
-            let target_hash = self.checksum.sha256_file(&target_prompt)?;
-            source_hash != target_hash
-        } else {
-            true
-        };
-
-        Ok((config_changed, prompt_changed))
+            // Target doesn't exist = changed
+            Ok(true)
+        }
     }
 
     /// Compile an agent from source
@@ -281,34 +268,26 @@ mod tests {
                 AgentDiff {
                     name: "new-agent".to_string(),
                     status: AgentStatus::New,
-                    source_path: Some(PathBuf::from("/src")),
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: true,
-                    prompt_changed: true,
+                    source_path: Some(PathBuf::from("/src/new-agent")),
+                    target_path: PathBuf::from("/tgt/new-agent.md"),
                 },
                 AgentDiff {
                     name: "modified-agent".to_string(),
                     status: AgentStatus::Modified,
-                    source_path: Some(PathBuf::from("/src")),
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: true,
-                    prompt_changed: false,
+                    source_path: Some(PathBuf::from("/src/modified-agent")),
+                    target_path: PathBuf::from("/tgt/modified-agent.md"),
                 },
                 AgentDiff {
                     name: "unchanged-agent".to_string(),
                     status: AgentStatus::Unchanged,
-                    source_path: Some(PathBuf::from("/src")),
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: false,
-                    prompt_changed: false,
+                    source_path: Some(PathBuf::from("/src/unchanged-agent")),
+                    target_path: PathBuf::from("/tgt/unchanged-agent.md"),
                 },
                 AgentDiff {
                     name: "removed-agent".to_string(),
                     status: AgentStatus::Removed,
                     source_path: None,
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: false,
-                    prompt_changed: false,
+                    target_path: PathBuf::from("/tgt/removed-agent.md"),
                 },
             ],
         };
@@ -326,10 +305,8 @@ mod tests {
             agents: vec![AgentDiff {
                 name: "unchanged".to_string(),
                 status: AgentStatus::Unchanged,
-                source_path: Some(PathBuf::from("/src")),
-                target_path: PathBuf::from("/tgt"),
-                config_changed: false,
-                prompt_changed: false,
+                source_path: Some(PathBuf::from("/src/unchanged")),
+                target_path: PathBuf::from("/tgt/unchanged.md"),
             }],
         };
 
@@ -343,26 +320,20 @@ mod tests {
                 AgentDiff {
                     name: "new".to_string(),
                     status: AgentStatus::New,
-                    source_path: Some(PathBuf::from("/src")),
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: true,
-                    prompt_changed: true,
+                    source_path: Some(PathBuf::from("/src/new")),
+                    target_path: PathBuf::from("/tgt/new.md"),
                 },
                 AgentDiff {
                     name: "modified".to_string(),
                     status: AgentStatus::Modified,
-                    source_path: Some(PathBuf::from("/src")),
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: true,
-                    prompt_changed: false,
+                    source_path: Some(PathBuf::from("/src/modified")),
+                    target_path: PathBuf::from("/tgt/modified.md"),
                 },
                 AgentDiff {
                     name: "unchanged".to_string(),
                     status: AgentStatus::Unchanged,
-                    source_path: Some(PathBuf::from("/src")),
-                    target_path: PathBuf::from("/tgt"),
-                    config_changed: false,
-                    prompt_changed: false,
+                    source_path: Some(PathBuf::from("/src/unchanged")),
+                    target_path: PathBuf::from("/tgt/unchanged.md"),
                 },
             ],
         };

@@ -134,9 +134,12 @@ impl AgentsSetupCommand {
                 continue;
             }
 
+            // Compile agent
+            let compiled = compile_agent(&parsed, self.platform);
+
             // Check if already exists
-            let agent_target_dir = target_dir.join(&agent_info.name);
-            if fs.exists(&agent_target_dir) && !self.force {
+            let agent_target_file = target_dir.join(&compiled.filename);
+            if fs.exists(&agent_target_file) && !self.force {
                 if self.dry_run {
                     logger.info(&format!("Would skip (exists): {}", agent_info.name));
                 } else {
@@ -146,28 +149,16 @@ impl AgentsSetupCommand {
                 continue;
             }
 
-            // Compile agent
-            let compiled = compile_agent(&parsed, self.platform);
-
             if self.dry_run {
                 logger.info(&format!(
-                    "Would compile: {} -> {}/{}",
+                    "Would compile: {} -> {}",
                     agent_info.name,
-                    target_dir.display(),
-                    agent_info.name
+                    agent_target_file.display()
                 ));
                 compiled_count += 1;
             } else {
-                // Create agent directory
-                fs.create_dir_all(&agent_target_dir).await?;
-
-                // Write config file
-                let config_path = agent_target_dir.join(&compiled.config_filename);
-                fs.write(&config_path, &compiled.config_content).await?;
-
-                // Write prompt file
-                let prompt_path = agent_target_dir.join(&compiled.prompt_filename);
-                fs.write(&prompt_path, &compiled.prompt_content).await?;
+                // Write single markdown file
+                fs.write(&agent_target_file, &compiled.content).await?;
 
                 logger.success(&format!("Compiled: {}", agent_info.name));
                 compiled_count += 1;
@@ -264,18 +255,10 @@ impl AgentsUpdateCommand {
             };
 
             let details = match agent.status {
-                AgentStatus::New => "(new)".to_string(),
-                AgentStatus::Modified => {
-                    let changes = match (agent.config_changed, agent.prompt_changed) {
-                        (true, true) => "config + prompt",
-                        (true, false) => "config",
-                        (false, true) => "prompt",
-                        (false, false) => "",
-                    };
-                    format!("(modified: {})", changes)
-                }
-                AgentStatus::Unchanged => "(unchanged)".to_string(),
-                AgentStatus::Removed => "(removed from source)".to_string(),
+                AgentStatus::New => "(new)",
+                AgentStatus::Modified => "(modified)",
+                AgentStatus::Unchanged => "(unchanged)",
+                AgentStatus::Removed => "(removed from source)",
             };
 
             logger.info(&format!("  {} {} {}", indicator, agent.name, details));
@@ -330,16 +313,8 @@ impl AgentsUpdateCommand {
                     // Compile and write
                     let compiled = differ.compile_from_source(source_path, self.platform).await?;
 
-                    // Create agent directory
-                    fs.create_dir_all(&agent.target_path).await?;
-
-                    // Write config file
-                    let config_path = agent.target_path.join(&compiled.config_filename);
-                    fs.write(&config_path, &compiled.config_content).await?;
-
-                    // Write prompt file
-                    let prompt_path = agent.target_path.join(&compiled.prompt_filename);
-                    fs.write(&prompt_path, &compiled.prompt_content).await?;
+                    // Write single markdown file
+                    fs.write(&agent.target_path, &compiled.content).await?;
 
                     updated += 1;
                 }
