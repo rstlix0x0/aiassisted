@@ -54,9 +54,14 @@ aiassisted install
 ls .aiassisted/
 # guidelines/  instructions/  prompts/  templates/  manifest.json
 
-# Setup AI skills and agents (optional but recommended)
-aiassisted setup-skills   # Creates /git-commit, /review-rust skills
-aiassisted setup-agents   # Creates specialized AI agents
+# Setup AI skills (optional but recommended)
+aiassisted skills setup   # Creates /git-commit, /review-rust, /memorybank-setup skills
+
+# List available skills
+aiassisted skills list    # Shows installed skills
+
+# Update skills when source changes
+aiassisted skills update  # Syncs only changed files
 
 # Check for updates
 aiassisted check
@@ -110,13 +115,16 @@ AI behavior rules and constraints:
 Reusable templates:
 - `git.commit.prompt.md` - Conventional commit template
 
-### 🛠️ Templates (`templates/`)
+### 🛠️ Skills (`skills/`)
 
-AI skill and agent templates:
-- `skills/claude/` - Claude Code skill templates
-- `skills/opencode/` - OpenCode skill templates
-- `agents/claude/` - Claude Code agent templates
-- `agents/opencode/` - OpenCode agent templates
+Pre-built AI skills (slash commands):
+- `git-commit/` - Conventional commit message generator
+- `review-rust/` - Rust code review
+- `review-codes/` - General code review
+- `doc-code/` - Code documentation
+- `doc-project/` - Project documentation
+- `policy-rust/` - Rust coding policies
+- `memorybank-setup/` - Memory bank initialization
 
 ## How to Use `.aiassisted/` with AI
 
@@ -141,9 +149,10 @@ AI: [Reads the referenced file]
 Create pre-configured skills that automatically load guidelines:
 
 ```bash
-aiassisted setup-skills
-# Creates .claude/commands/git-commit.SKILL.md
-# Creates .claude/commands/review-rust.SKILL.md
+aiassisted skills setup
+# Creates .claude/skills/git-commit/SKILL.md
+# Creates .claude/skills/review-rust/SKILL.md
+# Creates .claude/skills/memorybank-setup/SKILL.md
 ```
 
 **Usage:**
@@ -156,23 +165,29 @@ AI: [Skill automatically loads configured Rust guidelines]
     - ⚠ Consider ADT instead of Option<Box<dyn Trait>>
 ```
 
-### 3. Using Specialized Agents
+### 3. Memory Bank Setup
 
-Create agents with domain-specific knowledge:
+Initialize a memory bank for maintaining context across sessions:
 
-```bash
-aiassisted setup-agents
-# Creates .claude/agents/ai-knowledge-rust.md
-# Creates .claude/agents/ai-knowledge-architecture.md
+```
+You: /memorybank-setup
+
+AI: [Skill loads memory bank setup instructions]
+    Creating .memory-bank/ structure...
+    - workspace/ for shared context
+    - sub-projects/ for project-specific context
+    - templates/ for documentation templates
 ```
 
 **Usage:**
 ```
-You: @ai-knowledge-rust How should I implement error handling?
+You: /memorybank-setup
 
-AI: [Agent references rust guidelines automatically]
-    According to your Rust guidelines, use Result<T, E>
-    with a custom error type following the ADT pattern...
+AI: [Creates memory bank directory structure]
+    Setting up multi-project memory bank...
+    Created .memory-bank/README.md
+    Created .memory-bank/current-context.md
+    Created .memory-bank/workspace/...
 ```
 
 ### 4. Team Consistency
@@ -182,7 +197,7 @@ Install the same `.aiassisted/` across all team projects:
 ```bash
 # All team members run in their projects
 aiassisted install
-aiassisted setup-skills
+aiassisted skills setup
 ```
 
 Now everyone references the same guidelines, ensuring consistent AI assistance across the team.
@@ -255,37 +270,20 @@ aiassisted update [--path=DIR] [--force]
 aiassisted self-update
 ```
 
-### AI Skills & Agents
+### AI Skills
 
 ```bash
 # Setup skills (slash commands)
-aiassisted setup-skills [--tool=auto|claude|opencode] [--dry-run]
+aiassisted skills setup [--tool=auto|claude|opencode] [--dry-run] [--force]
 
-# Setup agents (custom subagents)
-aiassisted setup-agents [--tool=auto|claude|opencode] [--dry-run]
+# List available skills
+aiassisted skills list [--tool=auto|claude|opencode]
+
+# Update installed skills (sync changes)
+aiassisted skills update [--tool=auto|claude|opencode] [--dry-run] [--force]
 ```
 
-### Template Management
-
-```bash
-# List available templates
-aiassisted templates list
-
-# Show template content
-aiassisted templates show <name>
-
-# Initialize project templates
-aiassisted templates init
-
-# Show template paths
-aiassisted templates path
-
-# Show differences
-aiassisted templates diff <name>
-
-# Sync templates
-aiassisted templates sync
-```
+**Note:** `setup-skills` is deprecated. Use `skills setup` instead.
 
 ### Configuration
 
@@ -332,33 +330,36 @@ prefer_project = true     # Use project templates over global
 aiassisted config edit
 ```
 
-## Template Customization
+## Skills Customization
 
-Templates use cascading resolution (project overrides global):
+Skills are copied from `.aiassisted/skills/` to your tool's skills directory:
+- Claude Code: `.claude/skills/`
+- OpenCode: `.opencode/skills/`
 
-1. **Project templates:** `./.aiassisted/templates/` (custom per-project)
-2. **Global templates:** `~/.aiassisted/templates/` (defaults)
-
-**Customize templates:**
+**Customize skills:**
 ```bash
-# Initialize templates in your project
-aiassisted templates init
+# Edit a skill directly
+vim .aiassisted/skills/git-commit/SKILL.md
 
-# Edit templates
-vim .aiassisted/templates/skills/claude/review-rust.SKILL.md.template
+# Update installed skills with your changes
+aiassisted skills update
 
-# Regenerate skills with custom templates
-aiassisted setup-skills
-
-# Commit custom templates for your team
-git add .aiassisted/templates/
-git commit -m "feat: add custom AI skill templates"
+# Commit custom skills for your team
+git add .aiassisted/skills/
+git commit -m "feat: customize AI skills"
 ```
 
-**Template variables:**
-- `{{PROJECT_ROOT}}` - Absolute path to project
-- `{{GUIDELINES_LIST}}` - List of available guidelines
-- `{{TOOL_TYPE}}` - claude or opencode
+**Sync workflow:**
+```bash
+# Check what would be updated
+aiassisted skills update --dry-run
+
+# Apply updates
+aiassisted skills update
+
+# Force update all files
+aiassisted skills update --force
+```
 
 ## Examples
 
@@ -370,15 +371,14 @@ cd ~/my-rust-project
 # Install guidelines
 aiassisted install
 
-# Setup AI assistance
-aiassisted setup-skills
-aiassisted setup-agents
+# Setup AI skills
+aiassisted skills setup
 
 # Now you can use:
 # - /git-commit for standardized commits
 # - /review-rust for Rust code reviews
-# - @ai-knowledge-rust for Rust questions
-# - @ai-knowledge-architecture for architecture advice
+# - /memorybank-setup for initializing memory bank
+# - @.aiassisted/guidelines/rust/* for Rust questions
 ```
 
 ### Example 2: Keeping Guidelines Updated
@@ -404,8 +404,7 @@ cd project
 curl -sSL https://github.com/rstlix0x0/aiassisted/releases/latest/download/aiassisted-installer.sh | sh
 
 # .aiassisted/ already in the project
-aiassisted setup-skills
-aiassisted setup-agents
+aiassisted skills setup
 
 # Ready to use with team's standards
 ```
@@ -417,7 +416,7 @@ Built as a domain-based modular monolith in Rust:
 ```
 src/
 ├── content/       # Install, update, check
-├── templates/     # Skills and agents
+├── skills/        # Skills management (setup, list, update)
 ├── config/        # Configuration
 └── selfupdate/    # Binary updates
 ```
@@ -426,7 +425,7 @@ src/
 - Dependency inversion (traits)
 - Static dispatch (generics)
 - Zero warnings policy
-- Comprehensive testing (257 tests)
+- Comprehensive testing (165 tests)
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
@@ -434,13 +433,23 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
 ✅ **Complete Feature Set:**
 - Content management (install, update, check)
-- Template system (skills, agents)
+- Skills system with unified commands (setup, list, update)
+- Incremental skill updates with SHA256 diffing
 - Configuration management
 - Self-update capability
 - Cross-platform binaries (Linux, macOS, Windows)
 - SHA256 checksum verification
 - Smart incremental updates
 - Tool auto-detection (Claude Code, OpenCode)
+
+**Available Skills:**
+- `git-commit` - Conventional commit messages
+- `review-rust` - Rust code review
+- `review-codes` - General code review
+- `doc-code` - Code documentation
+- `doc-project` - Project documentation
+- `policy-rust` - Rust coding policies
+- `memorybank-setup` - Initialize memory bank structure
 
 See [FEATURES.md](FEATURES.md) for comprehensive feature list.
 

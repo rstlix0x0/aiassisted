@@ -1,6 +1,6 @@
 # Features
 
-Complete feature reference for `aiassisted` v0.3.0
+Complete feature reference for `aiassisted` v0.4.0
 
 ## Overview
 
@@ -647,7 +647,7 @@ End-to-end validation via `scripts/smoke-test.sh`:
 
 ## Summary
 
-**v0.3.0 Feature Completion:**
+**v0.4.0 Feature Completion:**
 
 | Category | Features | Status |
 |----------|----------|--------|
