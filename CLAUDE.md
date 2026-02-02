@@ -15,6 +15,97 @@ See `plans/` directory:
 - `plans/overview.md` - Architecture and policies
 - `plans/phase-*.md` - Individual phase plans
 
+## Memory Bank
+
+This project uses a **Multi-Project Memory Bank** for AI-assisted development workflows. The memory bank maintains context between sessions and tracks sub-project progress.
+
+**Location:** `.memory-bank/` (not tracked in git)
+
+**Full Instructions:** `.aiassisted/instructions/multi-project-memory-bank.instructions.md`
+
+### Quick Reference
+
+```
+.memory-bank/
+├── README.md              # Entry point
+├── current-context.md     # Active sub-project tracker
+├── workspace/             # Shared workspace context
+│   ├── project-brief.md
+│   ├── shared-patterns.md
+│   ├── workspace-architecture.md
+│   └── workspace-progress.md
+├── templates/docs/        # Documentation templates
+├── context-snapshots/     # Saved context states
+└── sub-projects/          # Individual sub-project contexts
+    └── <project-name>/
+        ├── project-brief.md
+        ├── product-context.md
+        ├── active-context.md
+        ├── system-patterns.md
+        ├── tech-context.md
+        ├── progress.md
+        ├── tasks/
+        └── docs/
+```
+
+### Key Commands
+
+- **Start session:** Read `current-context.md` to identify active sub-project
+- **Switch context:** Update `current-context.md` when changing sub-projects
+- **Resume work:** Read `active-context.md` for current focus and next steps
+- **Track progress:** Update `progress.md` and `tasks/_index.md`
+
+### Active Sub-Projects
+
+- `tui-integration` - Ratatui-based TUI for progress display
+
+### Memory Bank Agents
+
+Three specialized agents handle memory bank workflows. These agents are defined in `.aiassisted/agents/` following the [Agent Specification](.aiassisted/guidelines/ai/agents/agent-spec.guideline.md).
+
+| Agent | Purpose | Capabilities |
+|-------|---------|--------------|
+| `memorybank-planner` | Creates task plans following memory bank format | read-write |
+| `memorybank-implementer` | Executes planned tasks with progress tracking | read-write |
+| `memorybank-verifier` | Validates planner and implementer work results | read-only |
+
+#### Agent Workflow
+
+```
+┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+│ memorybank-     │     │ memorybank-          │     │ memorybank-         │
+│ planner         │────▶│ verifier             │     │ verifier            │
+│                 │     │ (validates plan)     │     │ (validates work)    │
+└─────────────────┘     └──────────────────────┘     └─────────────────────┘
+                                                              ▲
+┌─────────────────┐                                           │
+│ memorybank-     │───────────────────────────────────────────┘
+│ implementer     │
+│                 │
+└─────────────────┘
+```
+
+#### Automatic Verification Rule (MANDATORY)
+
+**CRITICAL:** Both `memorybank-planner` and `memorybank-implementer` MUST automatically invoke `memorybank-verifier` when they complete their work.
+
+- **After planning:** Planner creates task files → Invokes verifier to validate plan format
+- **After implementing:** Implementer completes task → Invokes verifier to validate work quality
+
+This ensures all memory bank work is verified before being considered complete.
+
+#### When to Use Each Agent
+
+| Scenario | Agent to Use |
+|----------|--------------|
+| "Plan a new task for X" | `memorybank-planner` |
+| "Create implementation plan for feature Y" | `memorybank-planner` |
+| "Implement task TASK-001" | `memorybank-implementer` |
+| "Execute the planned work" | `memorybank-implementer` |
+| "Verify the plan is correct" | `memorybank-verifier` |
+| "Check if implementation meets standards" | `memorybank-verifier` |
+| "Audit the task files" | `memorybank-verifier` |
+
 ## Common Commands (Rust)
 
 ### Development

@@ -50,3 +50,4 @@ test-*/
 
 /target
 .claude/
+.memory-bank/

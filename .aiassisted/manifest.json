@@ -1,5 +1,5 @@
 {
-  "version": "35d2950",
+  "version": "80c4d53",
   "files": [
     {
       "path": "agents/code-explorer/AGENT.md",
@@ -8,6 +8,18 @@
     {
       "path": "agents/code-reviewer/AGENT.md",
       "checksum": "6f077f9f8c6b8922016acc5cd1de7c01cfe871f8bdcf62843ca87579cff01247"
+    },
+    {
+      "path": "agents/memorybank-implementer/AGENT.md",
+      "checksum": "970666b7cb660e2c15f4e92c6ae082eac59af759848fc9a026c347f3c6db12a6"
+    },
+    {
+      "path": "agents/memorybank-planner/AGENT.md",
+      "checksum": "7b875cf43179c04175b2f61fa98ffa75d16e07bf96f5226b3d3d9d2ccf6df13b"
+    },
+    {
+      "path": "agents/memorybank-verifier/AGENT.md",
+      "checksum": "b6657c13c8f378e717873c0d97f5be06e7636e0168e6c30cf53cee94118f497f"
     },
     {
       "path": "config.toml.default",
