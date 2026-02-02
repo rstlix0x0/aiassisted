@@ -1,5 +1,5 @@
 {
-  "version": "a2ed234",
+  "version": "35d2950",
   "files": [
     {
       "path": "agents/code-explorer/AGENT.md",
@@ -88,6 +88,38 @@
     {
       "path": "guidelines/engineering/code-review-process.md",
       "checksum": "193994516a6cb1a8927ce242f536ee9cc2bf4183ad0c5b05dda70954ca030df1"
+    },
+    {
+      "path": "guidelines/ratatui/README.md",
+      "checksum": "eada6e555b90aec7e9aa1655862d8fbfee24d5a19fe9d78b3ccf09198775e101"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-architecture-guide.md",
+      "checksum": "83083b366a60c019cf3e0d0ab79c5719b4e0bf8287e92a2dc4fd7fd7eb1c755e"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-backends-guide.md",
+      "checksum": "1926013d4d6a7a3ce503546140adf55dce474b675fd6697bb311f1f5ae7812b4"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-ecosystem-guide.md",
+      "checksum": "132638e3e198687ffac37420dbe3297adebdb1ec82200b17709800504c60af79"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-getting-started-guide.md",
+      "checksum": "5de3185017a5e4aba4cf612e44229ef1c456036ceaff3e029280b2f978acbcf6"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-layout-guide.md",
+      "checksum": "5331d38838a19d06cc6eff74c1988a8ac99b2bf478bb494555e2edba37e3d8e8"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-rendering-guide.md",
+      "checksum": "7d5251d09c29d6902744400efbfade43a63cbdef93d3d47f95b44b58ad0126e7"
+    },
+    {
+      "path": "guidelines/ratatui/ratatui-widgets-guide.md",
+      "checksum": "224884044fe86f879b57195df34edd4c05c27bf05f89da0e4f8a64b1aad036b4"
     },
     {
       "path": "guidelines/rust/microsoft-rust-guidelines.md",
