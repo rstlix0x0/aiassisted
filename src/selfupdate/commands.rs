@@ -106,9 +106,11 @@ impl SelfUpdateCommand {
                 .map_err(Error::from)?;
 
             // Look for the binary file (skip directories and other files)
+            let is_file = entry.header().entry_type().is_file();
             if let Some(filename) = path.file_name() {
                 let filename_str = filename.to_string_lossy();
-                if filename_str.starts_with("aiassisted")
+                if is_file
+                    && filename_str.starts_with("aiassisted")
                     && !filename_str.ends_with(".md")
                     && !filename_str.ends_with(".txt")
                 {
