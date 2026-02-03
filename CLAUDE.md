@@ -72,27 +72,31 @@ Three specialized agents handle memory bank workflows. These agents are defined 
 #### Agent Workflow
 
 ```
-┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
-│ memorybank-     │     │ memorybank-          │     │ memorybank-         │
-│ planner         │────▶│ verifier             │     │ verifier            │
-│                 │     │ (validates plan)     │     │ (validates work)    │
-└─────────────────┘     └──────────────────────┘     └─────────────────────┘
-                                                              ▲
-┌─────────────────┐                                           │
-│ memorybank-     │───────────────────────────────────────────┘
-│ implementer     │
-│                 │
-└─────────────────┘
+┌─────────────────┐                    ┌─────────────────────┐
+│ memorybank-     │──── completes ────▶│ USER                │
+│ planner         │                    │ (decides next step) │
+└─────────────────┘                    └─────────────────────┘
+                                                │
+                                                ▼ (optional)
+                                       ┌─────────────────────┐
+                                       │ memorybank-         │
+                                       │ verifier            │
+                                       └─────────────────────┘
+                                                ▲
+                                                │ (optional)
+┌─────────────────┐                    ┌─────────────────────┐
+│ memorybank-     │──── completes ────▶│ USER                │
+│ implementer     │                    │ (decides next step) │
+└─────────────────┘                    └─────────────────────┘
 ```
 
-#### Automatic Verification Rule (MANDATORY)
+#### No Automatic Agent Chaining
 
-**CRITICAL:** Both `memorybank-planner` and `memorybank-implementer` MUST automatically invoke `memorybank-verifier` when they complete their work.
+**CRITICAL:** Agents do NOT automatically invoke other agents.
 
-- **After planning:** Planner creates task files → Invokes verifier to validate plan format
-- **After implementing:** Implementer completes task → Invokes verifier to validate work quality
-
-This ensures all memory bank work is verified before being considered complete.
+- Each agent completes its work and reports to the user
+- The USER decides whether to run verification
+- This prevents infinite recursion and gives user control
 
 #### When to Use Each Agent
 
@@ -102,9 +106,16 @@ This ensures all memory bank work is verified before being considered complete.
 | "Create implementation plan for feature Y" | `memorybank-planner` |
 | "Implement task TASK-001" | `memorybank-implementer` |
 | "Execute the planned work" | `memorybank-implementer` |
-| "Verify the plan is correct" | `memorybank-verifier` |
-| "Check if implementation meets standards" | `memorybank-verifier` |
-| "Audit the task files" | `memorybank-verifier` |
+| "Verify the plan is correct" | `memorybank-verifier` (user-initiated) |
+| "Check if implementation meets standards" | `memorybank-verifier` (user-initiated) |
+| "Audit the task files" | `memorybank-verifier` (user-initiated) |
+
+#### Recommended Workflow
+
+1. Run `memorybank-planner` to create a task plan
+2. (Optional) Run `memorybank-verifier` to validate the plan
+3. Run `memorybank-implementer` to execute the plan
+4. (Optional) Run `memorybank-verifier` to validate the implementation
 
 ## Common Commands (Rust)
 
